@@ -8,7 +8,7 @@ Private, multi-user wardrobe management with local image storage and AI-assisted
 2. In Google Cloud Console, create a web OAuth client and add `http://localhost:3000/api/auth/callback/google` as its local redirect URI. Add the production equivalent before deploying.
 3. To run the full container stack, use `docker compose up --build`. PostgreSQL migrations run before the web and worker containers start.
 
-For normal local development, start PostgreSQL only with `docker compose up -d db`. Keep the `localhost` database URL from `.env.example`, run `bun run db:migrate` once, then use `bun dev` and `bun run worker` in separate terminals. The app and worker will hot-reload locally while Docker supplies only the database.
+For normal local development, start PostgreSQL only with `docker compose up -d db`. Keep the `localhost` database URL from `.env.example`, run `bun run db:migrate` once, then use `bun dev` and `bun run worker` in separate terminals. PostgreSQL is exposed locally on port 5432; the app and worker hot-reload locally while Docker supplies only the database.
 
 ## Production
 
