@@ -19,6 +19,8 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      DATABASE_URL: postgres://outfitted:outfitted@db:5432/outfitted
     depends_on:
       db:
         condition: service_healthy
@@ -30,6 +32,8 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      DATABASE_URL: postgres://outfitted:outfitted@db:5432/outfitted
     volumes:
       - wardrobe_images:/app/data/uploads
     depends_on:
@@ -42,6 +46,8 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      DATABASE_URL: postgres://outfitted:outfitted@db:5432/outfitted
     volumes:
       - wardrobe_images:/app/data/uploads
     depends_on:

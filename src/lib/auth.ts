@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { db } from "@/lib/db";
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   adapter: DrizzleAdapter(db),
   providers: [GoogleProvider({ clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET! })],
   session: { strategy: "database" },
