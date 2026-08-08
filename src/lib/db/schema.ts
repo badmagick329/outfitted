@@ -42,7 +42,7 @@ export const wardrobeItems = pgTable("wardrobe_items", {
   styleTags: jsonb("style_tags").$type<string[]>().notNull().default([]),
   seasons: jsonb("seasons").$type<string[]>().notNull().default([]),
   formality: varchar("formality", { length: 64 }),
-  confidence: jsonb("confidence").$type<Record<string, string>>().notNull().default({}),
+  confidence: jsonb("confidence").$type<Array<{ field: string; level: "high" | "medium" | "low"; note: string }>>().notNull().default([]),
   analysisStatus: varchar("analysis_status", { length: 24 }).notNull().default("pending"),
   analysisError: text("analysis_error"), archivedAt: timestamp("archived_at", { withTimezone: true }),
   metadataEditedAt: timestamp("metadata_edited_at", { withTimezone: true }),

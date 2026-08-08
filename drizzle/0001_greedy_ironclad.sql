@@ -1,0 +1,1 @@
+ALTER TABLE "wardrobe_items" ALTER COLUMN "confidence" SET DEFAULT '[]'::jsonb;
