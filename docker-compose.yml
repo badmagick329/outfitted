@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: outfitted
+      POSTGRES_USER: outfitted
+      POSTGRES_PASSWORD: outfitted
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outfitted -d outfitted"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build: .
+    command: bun run db:migrate
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: .
+    command: bun server.js
+    ports: ["3000:3000"]
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - wardrobe_images:/app/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    command: bun run src/worker.ts
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - wardrobe_images:/app/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  wardrobe_images:

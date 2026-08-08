@@ -1,36 +1,22 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Outfitted
 
-## Getting Started
+Private, multi-user wardrobe management with local image storage and AI-assisted garment details.
 
-First, run the development server:
+## Local setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Copy `.env.example` to `.env`. Set a long `AUTH_SECRET`, Google OAuth credentials, and an OpenAI API key.
+2. In Google Cloud Console, create a web OAuth client and add `http://localhost:3000/api/auth/callback/google` as its local redirect URI. Add the production equivalent before deploying.
+3. Start the stack with `docker compose up --build`. PostgreSQL migrations run before the web and worker containers start.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For app-only development, run PostgreSQL with Docker, set `DATABASE_URL` to your local database, run `bun run db:migrate`, then use `bun dev` and `bun run worker` in separate terminals.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set the same environment values in Dockploy, attach durable Docker volumes, and put the web service behind HTTPS. `AUTH_URL` must be the public HTTPS URL and Google must list its `/api/auth/callback/google` callback. The image volume contains only optimized WebP inventory images; back it up together with PostgreSQL.
 
-## Learn More
+## Commands
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `bun run db:generate` — create a migration after schema changes
+- `bun run db:migrate` — apply committed migrations
+- `bun run worker` — run the asynchronous AI processor
+- `bun run lint` / `bun run build` — validate the app
