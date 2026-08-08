@@ -1,5 +1,5 @@
 {
-  "id": "86c6c19e-2562-400b-977c-32830d53ed12",
+  "id": "4decb4f7-eebd-4e96-8472-99b4d2fad7b6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -46,7 +46,7 @@
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "timestamp",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -130,13 +130,13 @@
         },
         "width": {
           "name": "width",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
         "height": {
           "name": "height",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -149,10 +149,10 @@
         },
         "position": {
           "name": "position",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": "'0'"
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -595,6 +595,12 @@
         },
         "archived_at": {
           "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata_edited_at": {
+          "name": "metadata_edited_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

@@ -5,7 +5,7 @@ CREATE TABLE "accounts" (
 	"provider_account_id" text NOT NULL,
 	"refresh_token" text,
 	"access_token" text,
-	"expires_at" timestamp,
+	"expires_at" integer,
 	"token_type" text,
 	"scope" text,
 	"id_token" text,
@@ -17,10 +17,10 @@ CREATE TABLE "item_photos" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"item_id" uuid NOT NULL,
 	"storage_key" text NOT NULL,
-	"width" text NOT NULL,
-	"height" text NOT NULL,
+	"width" integer NOT NULL,
+	"height" integer NOT NULL,
 	"mime_type" varchar(64) DEFAULT 'image/webp' NOT NULL,
-	"position" text DEFAULT '0' NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "item_photos_storage_key_unique" UNIQUE("storage_key")
 );
@@ -85,6 +85,7 @@ CREATE TABLE "wardrobe_items" (
 	"analysis_status" varchar(24) DEFAULT 'pending' NOT NULL,
 	"analysis_error" text,
 	"archived_at" timestamp with time zone,
+	"metadata_edited_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );

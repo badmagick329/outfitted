@@ -1,1 +1,0 @@
-ALTER TABLE "wardrobe_items" ADD COLUMN "metadata_edited_at" timestamp with time zone;
