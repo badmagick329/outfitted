@@ -6,6 +6,7 @@ Build a lively private wardrobe catalogue: confident, useful, tactile, and perso
 
 - Use a warm cream canvas and deep ink text. Berry is the primary action colour, teal provides structure, and citrus is the high-energy highlight.
 - Use Space Grotesk for expressive UI hierarchy and IBM Plex Mono for compact labels, inventory counts, and processing metadata.
+- Do not use redundant eyebrow labels. A label should add context the heading does not already communicate; never restate the page title in different words.
 - Garment images are the visual lead. Give cards clear framing, generous crops, and varied but disciplined colour moments.
 - Make interactions tactile: crisp borders, slightly rounded corners, confident hover movement, and obvious focus states. Avoid glass effects, gradients, giant pills, and default SaaS-dashboard panels.
 - Keep the product practical. Colour should distinguish actions and state, not obstruct scanning a wardrobe.

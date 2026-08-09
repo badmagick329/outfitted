@@ -12,7 +12,7 @@ export default async function OutfitsPage() {
         <h1 className="mt-2 text-4xl font-bold tracking-[-0.05em] sm:text-5xl">
           Ask your wardrobe
         </h1>
-        <p className="mt-3 text-ink/65">Suggestions only draw from what you own.</p>
+        <p className="mt-3 text-ink/65">Tell us the plan and we’ll put a look together.</p>
       </header>
       <OutfitDesk items={await wardrobeService.listActive(await requireUserId())} />
     </>

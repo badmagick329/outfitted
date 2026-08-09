@@ -151,11 +151,9 @@ export function OutfitDesk({ items }: { items: Item[] }) {
             <span className="w-fit rounded-2xl bg-citrus p-3 text-berry">
               <Sparkles size={22} />
             </span>
-            <h2 className="mt-5 text-2xl font-bold tracking-[-0.04em]">
-              A considered answer, not another shopping list.
-            </h2>
+            <h2 className="mt-5 text-2xl font-bold tracking-[-0.04em]">What are you wearing?</h2>
             <p className="mt-2 max-w-md text-ink/65">
-              Give the occasion, mood, weather, or a garment to begin with.
+              Share the occasion, your mood, or a piece you want to wear. We’ll take it from there.
             </p>
           </div>
         )}
