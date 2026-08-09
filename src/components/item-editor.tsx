@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 
@@ -8,11 +8,6 @@ export function ItemEditor({ item }: { item: Item }) {
   const router = useRouter(); const [data, setData] = useState(item); const [saving, setSaving] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const isAnalyzing = item.analysisStatus === "pending" || item.analysisStatus === "processing";
-  useEffect(() => {
-    if (!isAnalyzing) return;
-    const refresh = window.setInterval(() => router.refresh(), 2500);
-    return () => window.clearInterval(refresh);
-  }, [isAnalyzing, router]);
   const set = (key: keyof Item, value: string) => setData((previous) => ({ ...previous, [key]: value }));
   async function save() { setSaving(true); await fetch(`/api/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, styleTags: data.styleTags, seasons: data.seasons }) }); setSaving(false); router.refresh(); }
   async function retry() { setRetrying(true); try { await fetch(`/api/items/${item.id}`, { method: "POST" }); router.refresh(); } finally { setRetrying(false); } }

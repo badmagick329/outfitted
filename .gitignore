@@ -37,6 +37,9 @@ yarn-error.log*
 # local private image volume when not using Docker
 /data/uploads
 
+# local planning notes
+/.ignore
+
 # vercel
 .vercel
 
