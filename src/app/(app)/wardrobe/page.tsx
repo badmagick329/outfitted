@@ -5,7 +5,6 @@ import { requireUserId } from "@/lib/auth";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 const statusStyles = {
-  complete: "border-teal/30 bg-mist text-teal-dark",
   failed: "border-red-300 bg-red-50 text-red-700",
   pending: "border-citrus/80 bg-citrus/40 text-ink",
   processing: "border-citrus/80 bg-citrus/40 text-ink",
@@ -16,9 +15,11 @@ export default async function WardrobePage() {
 
   return (
     <>
-      <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+      <header className="flex flex-col justify-between gap-6 rounded-3xl border border-line bg-mist/75 p-6 shadow-[5px_5px_0_var(--color-peach)] sm:flex-row sm:items-end sm:p-8">
         <div>
-          <p className="font-mono text-xs font-bold tracking-[0.18em] text-berry">MY INVENTORY</p>
+          <p className="inline-flex rounded-full bg-citrus px-3 py-1 font-mono text-[10px] font-bold tracking-[0.16em] text-berry">
+            MY INVENTORY
+          </p>
           <h1 className="mt-2 text-4xl font-bold tracking-[-0.05em] sm:text-5xl">Your wardrobe</h1>
           <p className="mt-2 text-ink/65">
             {items.length} active {items.length === 1 ? "piece" : "pieces"}
@@ -32,7 +33,7 @@ export default async function WardrobePage() {
         </Link>
       </header>
 
-      <div className="mt-9 flex items-center justify-between gap-4 border-y border-line py-3 text-sm text-ink/60">
+      <div className="mt-9 flex items-center justify-between gap-4 border-y-2 border-teal/25 py-3 text-sm text-ink/60">
         <div className="flex min-w-0 items-center gap-2">
           <Search size={16} className="shrink-0" />
           <span className="font-mono text-xs">Your full collection</span>
@@ -44,9 +45,9 @@ export default async function WardrobePage() {
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => (
             <Link
-              href={`/items/${item.id}`}
-              className="group overflow-hidden rounded-2xl border border-line bg-canvas transition hover:-translate-y-1 hover:border-teal hover:shadow-[5px_5px_0_var(--color-peach)]"
               key={item.id}
+              href={`/items/${item.id}`}
+              className="group block h-full overflow-hidden rounded-2xl border border-line bg-canvas transition hover:-translate-y-1 hover:border-teal hover:shadow-[5px_5px_0_var(--color-peach)]"
             >
               {item.coverPhotoId ? (
                 <img
@@ -64,11 +65,13 @@ export default async function WardrobePage() {
                     {item.category ?? "Processing details"}
                   </span>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
-                >
-                  {item.analysisStatus}
-                </span>
+                {item.analysisStatus !== "complete" && (
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
+                  >
+                    {item.analysisStatus}
+                  </span>
+                )}
               </div>
             </Link>
           ))}

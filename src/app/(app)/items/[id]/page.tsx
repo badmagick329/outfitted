@@ -5,7 +5,6 @@ import { requireUserId } from "@/lib/auth";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 const statusStyles = {
-  complete: "border-teal/30 bg-mist text-teal-dark",
   failed: "border-red-300 bg-red-50 text-red-700",
   pending: "border-citrus/80 bg-citrus/40 text-ink",
   processing: "border-citrus/80 bg-citrus/40 text-ink",
@@ -34,11 +33,13 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
                 : "We’re reading the details in the background."}
           </p>
         </div>
-        <span
-          className={`w-fit shrink-0 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
-        >
-          {item.analysisStatus}
-        </span>
+        {item.analysisStatus !== "complete" && (
+          <span
+            className={`w-fit shrink-0 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
+          >
+            {item.analysisStatus}
+          </span>
+        )}
       </header>
       <div className="mt-9 grid gap-8 xl:grid-cols-[minmax(0,0.8fr)_minmax(28rem,0.9fr)]">
         <div className="grid grid-cols-2 gap-4 self-start">
