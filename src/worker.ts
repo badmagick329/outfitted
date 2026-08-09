@@ -12,16 +12,45 @@ await boss.work<{ itemId: string }>(ANALYZE_ITEM_JOB, async (jobs) => {
 
 async function analyzeItem(itemId: string) {
   try {
-    const [item] = await db.select().from(wardrobeItems).where(eq(wardrobeItems.id, itemId)).limit(1);
+    const [item] = await db
+      .select()
+      .from(wardrobeItems)
+      .where(eq(wardrobeItems.id, itemId))
+      .limit(1);
     if (!item || item.analysisStatus === "complete") return;
-    await db.update(wardrobeItems).set({ analysisStatus: "processing", analysisError: null, updatedAt: new Date() }).where(eq(wardrobeItems.id, itemId));
+    await db
+      .update(wardrobeItems)
+      .set({ analysisStatus: "processing", analysisError: null, updatedAt: new Date() })
+      .where(eq(wardrobeItems.id, itemId));
     const photos = await db.select().from(itemPhotos).where(eq(itemPhotos.itemId, itemId));
-    const images = await Promise.all(photos.map(async (photo) => `data:image/webp;base64,${(await storage.read(photo.storageKey)).toString("base64")}`));
+    const images = await Promise.all(
+      photos.map(
+        async (photo) =>
+          `data:image/webp;base64,${(await storage.read(photo.storageKey)).toString("base64")}`,
+      ),
+    );
     const result = await ai.analyze(images);
-    const values = item.metadataEditedAt ? { analysisStatus: "complete", analysisError: null, updatedAt: new Date() } : { ...result, name: item.name === "New garment" ? result.name : item.name, material: result.material ?? null, fit: result.fit ?? null, analysisStatus: "complete", analysisError: null, updatedAt: new Date() };
+    const values = item.metadataEditedAt
+      ? { analysisStatus: "complete", analysisError: null, updatedAt: new Date() }
+      : {
+          ...result,
+          name: item.name === "New garment" ? result.name : item.name,
+          material: result.material ?? null,
+          fit: result.fit ?? null,
+          analysisStatus: "complete",
+          analysisError: null,
+          updatedAt: new Date(),
+        };
     await db.update(wardrobeItems).set(values).where(eq(wardrobeItems.id, itemId));
   } catch (error) {
-    await db.update(wardrobeItems).set({ analysisStatus: "failed", analysisError: error instanceof Error ? error.message.slice(0, 1000) : "Analysis failed", updatedAt: new Date() }).where(eq(wardrobeItems.id, itemId));
+    await db
+      .update(wardrobeItems)
+      .set({
+        analysisStatus: "failed",
+        analysisError: error instanceof Error ? error.message.slice(0, 1000) : "Analysis failed",
+        updatedAt: new Date(),
+      })
+      .where(eq(wardrobeItems.id, itemId));
     throw error;
   }
 }

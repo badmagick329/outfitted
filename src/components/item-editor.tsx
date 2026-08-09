@@ -3,16 +3,198 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 
-type Item = { id: string; name: string; description: string | null; category: string | null; primaryColor: string | null; material: string | null; fit: string | null; formality: string | null; styleTags: string[]; seasons: string[]; analysisStatus: string; analysisError: string | null; archivedAt: Date | null; };
+type Item = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  primaryColor: string | null;
+  material: string | null;
+  fit: string | null;
+  formality: string | null;
+  styleTags: string[];
+  seasons: string[];
+  analysisStatus: string;
+  analysisError: string | null;
+  archivedAt: Date | null;
+};
 export function ItemEditor({ item }: { item: Item }) {
-  const router = useRouter(); const [data, setData] = useState(item); const [saving, setSaving] = useState(false);
+  const router = useRouter();
+  const [data, setData] = useState(item);
+  const [saving, setSaving] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const isAnalyzing = item.analysisStatus === "pending" || item.analysisStatus === "processing";
-  const set = (key: keyof Item, value: string) => setData((previous) => ({ ...previous, [key]: value }));
-  async function save() { setSaving(true); await fetch(`/api/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, styleTags: data.styleTags, seasons: data.seasons }) }); setSaving(false); router.refresh(); }
-  async function retry() { setRetrying(true); try { await fetch(`/api/items/${item.id}`, { method: "POST" }); router.refresh(); } finally { setRetrying(false); } }
-  async function archive() { await fetch(`/api/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ archivedAt: new Date().toISOString() }) }); router.push("/wardrobe"); router.refresh(); }
-  async function restore() { await fetch(`/api/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ archivedAt: null }) }); router.push("/wardrobe"); router.refresh(); }
-  async function remove() { if (!confirm("Permanently delete this garment and its photos?")) return; await fetch(`/api/items/${item.id}`, { method: "DELETE" }); router.push("/wardrobe"); router.refresh(); }
-  return <section className="item-editor"><div className="editor-heading"><h2>Details</h2>{isAnalyzing ? <span className="analysis-status"><LoaderCircle className="spin" size={14} /> {item.analysisStatus === "processing" ? "Analyzing" : "Queued"}</span> : <button className="text-button" onClick={retry} disabled={retrying}>{retrying ? <><LoaderCircle className="spin" size={14} /> Queuing…</> : <><RotateCcw size={14} /> Re-analyze</>}</button>}</div>{isAnalyzing ? <div className="analysis-panel"><span className="analysis-orb"><LoaderCircle className="spin" size={24} /></span><div><strong>{item.analysisStatus === "processing" ? "Reading garment details" : "Analysis is queued"}</strong><p>We’re identifying its colour, material, fit, style and seasonality. This page updates automatically when it’s ready.</p></div></div> : <>{data.analysisStatus === "failed" && <p className="form-error">We couldn’t analyze this garment. Try again in a moment.</p>}<label className="field-label">Name<input value={data.name} onChange={(e) => set("name", e.target.value)} /></label><label className="field-label">Description<textarea value={data.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={4} /></label><div className="field-grid"><label className="field-label">Category<input value={data.category ?? ""} onChange={(e) => set("category", e.target.value)} /></label><label className="field-label">Main colour<input value={data.primaryColor ?? ""} onChange={(e) => set("primaryColor", e.target.value)} /></label><label className="field-label">Material<input value={data.material ?? ""} onChange={(e) => set("material", e.target.value)} /></label><label className="field-label">Fit<input value={data.fit ?? ""} onChange={(e) => set("fit", e.target.value)} /></label><label className="field-label">Formality<input value={data.formality ?? ""} onChange={(e) => set("formality", e.target.value)} /></label><label className="field-label">Style tags<input value={data.styleTags.join(", ")} onChange={(e) => setData((previous) => ({ ...previous, styleTags: e.target.value.split(",").map((tag) => tag.trim()).filter(Boolean) }))} /></label></div><button className="primary-action" onClick={save} disabled={saving}>{saving && <LoaderCircle className="spin" size={17} />}{saving ? "Saving…" : "Save details"}</button><div className="danger-zone">{item.archivedAt ? <button className="text-button" onClick={restore}><Archive size={15} /> Restore garment</button> : <button className="text-button" onClick={archive}><Archive size={15} /> Archive garment</button>}<button className="text-button danger" onClick={remove}><Trash2 size={15} /> Delete permanently</button></div></>}</section>;
+  const set = (key: keyof Item, value: string) =>
+    setData((previous) => ({ ...previous, [key]: value }));
+  async function save() {
+    setSaving(true);
+    await fetch(`/api/items/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, styleTags: data.styleTags, seasons: data.seasons }),
+    });
+    setSaving(false);
+    router.refresh();
+  }
+  async function retry() {
+    setRetrying(true);
+    try {
+      await fetch(`/api/items/${item.id}`, { method: "POST" });
+      router.refresh();
+    } finally {
+      setRetrying(false);
+    }
+  }
+  async function archive() {
+    await fetch(`/api/items/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archivedAt: new Date().toISOString() }),
+    });
+    router.push("/wardrobe");
+    router.refresh();
+  }
+  async function restore() {
+    await fetch(`/api/items/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archivedAt: null }),
+    });
+    router.push("/wardrobe");
+    router.refresh();
+  }
+  async function remove() {
+    if (!confirm("Permanently delete this garment and its photos?")) return;
+    await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+    router.push("/wardrobe");
+    router.refresh();
+  }
+  return (
+    <section className="item-editor">
+      <div className="editor-heading">
+        <h2>Details</h2>
+        {isAnalyzing ? (
+          <span className="analysis-status">
+            <LoaderCircle className="spin" size={14} />{" "}
+            {item.analysisStatus === "processing" ? "Analyzing" : "Queued"}
+          </span>
+        ) : (
+          <button className="text-button" onClick={retry} disabled={retrying}>
+            {retrying ? (
+              <>
+                <LoaderCircle className="spin" size={14} /> Queuing…
+              </>
+            ) : (
+              <>
+                <RotateCcw size={14} /> Re-analyze
+              </>
+            )}
+          </button>
+        )}
+      </div>
+      {isAnalyzing ? (
+        <div className="analysis-panel">
+          <span className="analysis-orb">
+            <LoaderCircle className="spin" size={24} />
+          </span>
+          <div>
+            <strong>
+              {item.analysisStatus === "processing"
+                ? "Reading garment details"
+                : "Analysis is queued"}
+            </strong>
+            <p>
+              We’re identifying its colour, material, fit, style and seasonality. This page updates
+              automatically when it’s ready.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {data.analysisStatus === "failed" && (
+            <p className="form-error">We couldn’t analyze this garment. Try again in a moment.</p>
+          )}
+          <label className="field-label">
+            Name
+            <input value={data.name} onChange={(e) => set("name", e.target.value)} />
+          </label>
+          <label className="field-label">
+            Description
+            <textarea
+              value={data.description ?? ""}
+              onChange={(e) => set("description", e.target.value)}
+              rows={4}
+            />
+          </label>
+          <div className="field-grid">
+            <label className="field-label">
+              Category
+              <input
+                value={data.category ?? ""}
+                onChange={(e) => set("category", e.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              Main colour
+              <input
+                value={data.primaryColor ?? ""}
+                onChange={(e) => set("primaryColor", e.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              Material
+              <input
+                value={data.material ?? ""}
+                onChange={(e) => set("material", e.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              Fit
+              <input value={data.fit ?? ""} onChange={(e) => set("fit", e.target.value)} />
+            </label>
+            <label className="field-label">
+              Formality
+              <input
+                value={data.formality ?? ""}
+                onChange={(e) => set("formality", e.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              Style tags
+              <input
+                value={data.styleTags.join(", ")}
+                onChange={(e) =>
+                  setData((previous) => ({
+                    ...previous,
+                    styleTags: e.target.value
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter(Boolean),
+                  }))
+                }
+              />
+            </label>
+          </div>
+          <button className="primary-action" onClick={save} disabled={saving}>
+            {saving && <LoaderCircle className="spin" size={17} />}
+            {saving ? "Saving…" : "Save details"}
+          </button>
+          <div className="danger-zone">
+            {item.archivedAt ? (
+              <button className="text-button" onClick={restore}>
+                <Archive size={15} /> Restore garment
+              </button>
+            ) : (
+              <button className="text-button" onClick={archive}>
+                <Archive size={15} /> Archive garment
+              </button>
+            )}
+            <button className="text-button danger" onClick={remove}>
+              <Trash2 size={15} /> Delete permanently
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
 }
