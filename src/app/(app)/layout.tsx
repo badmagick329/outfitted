@@ -1,43 +1,54 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Archive, CircleUserRound, Shirt, Sparkles } from "lucide-react";
-import { auth } from "@/lib/auth";
-import { SignOutButton } from "@/components/sign-out-button";
 import { AnalysisStatusPoller } from "@/components/analysis-status-poller";
+import { SignOutButton } from "@/components/sign-out-button";
+import { auth } from "@/lib/auth";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   return (
-    <div className="app-shell">
+    <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <AnalysisStatusPoller />
-      <aside className="sidebar">
-        <Link href="/wardrobe" className="wordmark">
-          <span className="brand-mark">
+      <aside className="sticky top-0 z-10 flex h-auto items-center justify-between border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur lg:h-screen lg:flex-col lg:items-stretch lg:justify-start lg:border-r lg:border-b-0 lg:px-5 lg:py-6">
+        <Link href="/wardrobe" className="flex items-center gap-2 font-bold tracking-[-0.06em]">
+          <span className="grid size-8 place-items-center rounded-lg bg-berry text-canvas shadow-[3px_3px_0_#d9f35a]">
             <Sparkles size={16} />
-          </span>{" "}
-          outfitted
+          </span>
+          <span className="text-lg">outfitted</span>
         </Link>
-        <nav>
-          <Link href="/wardrobe">
+        <nav className="hidden gap-1 lg:mt-14 lg:grid">
+          <Link
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-peach"
+            href="/wardrobe"
+          >
             <Shirt size={17} /> Wardrobe
           </Link>
-          <Link href="/outfits">
+          <Link
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-mist"
+            href="/outfits"
+          >
             <Sparkles size={17} /> Outfit desk
           </Link>
-          <Link href="/archive">
+          <Link
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-citrus"
+            href="/archive"
+          >
             <Archive size={17} /> Archive
           </Link>
         </nav>
-        <div className="sidebar-user">
+        <div className="flex items-center gap-2 lg:mt-auto lg:border-t lg:border-line lg:pt-5">
           <CircleUserRound size={19} />
-          <div>
-            <strong>{session.user.name ?? "Your wardrobe"}</strong>
+          <div className="hidden lg:block">
+            <strong className="block text-sm">{session.user.name ?? "Your wardrobe"}</strong>
             <SignOutButton />
           </div>
         </div>
       </aside>
-      <section className="main-content">{children}</section>
+      <section className="mx-auto w-full max-w-7xl px-5 py-9 sm:px-8 lg:px-12 lg:py-12">
+        {children}
+      </section>
     </div>
   );
 }
