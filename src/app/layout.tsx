@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const sans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
+const sans = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -21,8 +21,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${sans.variable} ${mono.variable} h-full`}>
+      <body>{children}</body>
     </html>
   );
 }

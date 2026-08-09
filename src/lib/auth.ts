@@ -3,6 +3,7 @@ import { getServerSession, type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { db } from "@/lib/db";
 import { accounts, sessions, users, verificationTokens } from "@/lib/db/schema";
+import { unauthorized } from "@/shared/application-error";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -30,6 +31,6 @@ export const authOptions: NextAuthOptions = {
 export const auth = () => getServerSession(authOptions);
 export async function requireUserId() {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw unauthorized();
   return session.user.id;
 }
