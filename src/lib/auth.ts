@@ -12,10 +12,24 @@ export const authOptions: NextAuthOptions = {
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
-  providers: [GoogleProvider({ clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET! })],
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
   session: { strategy: "database" },
   pages: { signIn: "/login" },
-  callbacks: { session: ({ session, user }) => { if (session.user) session.user.id = user.id; return session; } },
+  callbacks: {
+    session: ({ session, user }) => {
+      if (session.user) session.user.id = user.id;
+      return session;
+    },
+  },
 };
 export const auth = () => getServerSession(authOptions);
-export async function requireUserId() { const session = await auth(); if (!session?.user?.id) throw new Error("Unauthorized"); return session.user.id; }
+export async function requireUserId() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  return session.user.id;
+}

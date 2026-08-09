@@ -8,6 +8,18 @@ const inProgressStatuses = ["pending", "processing"];
 
 export async function GET() {
   const userId = await requireUserId();
-  const items = await db.select({ id: wardrobeItems.id, status: wardrobeItems.analysisStatus, updatedAt: wardrobeItems.updatedAt }).from(wardrobeItems).where(and(eq(wardrobeItems.userId, userId), inArray(wardrobeItems.analysisStatus, inProgressStatuses)));
+  const items = await db
+    .select({
+      id: wardrobeItems.id,
+      status: wardrobeItems.analysisStatus,
+      updatedAt: wardrobeItems.updatedAt,
+    })
+    .from(wardrobeItems)
+    .where(
+      and(
+        eq(wardrobeItems.userId, userId),
+        inArray(wardrobeItems.analysisStatus, inProgressStatuses),
+      ),
+    );
   return NextResponse.json({ items });
 }

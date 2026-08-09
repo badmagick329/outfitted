@@ -5,9 +5,78 @@ import { useRouter } from "next/navigation";
 import { ImagePlus, LoaderCircle } from "lucide-react";
 
 export function UploadForm() {
-  const router = useRouter(); const [files, setFiles] = useState<File[]>([]); const [error, setError] = useState(""); const [loading, setLoading] = useState(false); const [previews, setPreviews] = useState<string[]>([]);
+  const router = useRouter();
+  const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [previews, setPreviews] = useState<string[]>([]);
   useEffect(() => () => previews.forEach(URL.revokeObjectURL), [previews]);
-  function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) { const nextFiles = Array.from(event.target.files ?? []).slice(0, 6); setPreviews((current) => { current.forEach(URL.revokeObjectURL); return nextFiles.map((file) => URL.createObjectURL(file)); }); setFiles(nextFiles); setError(""); }
-  async function upload(event: React.FormEvent) { event.preventDefault(); if (!files.length) return setError("Choose at least one image."); setLoading(true); setError(""); const form = new FormData(); files.forEach((file) => form.append("photos", file)); try { const response = await fetch("/api/items", { method: "POST", body: form }); const payload = await response.json(); if (!response.ok) { setLoading(false); return setError(payload.error); } router.push(`/items/${payload.itemId}`); router.refresh(); } catch { setLoading(false); setError("Upload failed. Check your connection and try again."); } }
-  return <form className="upload-form" onSubmit={upload} aria-busy={loading}><label className={`drop-zone ${loading ? "is-disabled" : ""}`}><ImagePlus size={28} /><strong>{files.length ? `${files.length} ${files.length === 1 ? "photo" : "photos"} selected` : "Choose garment photos"}</strong><span>{files.length ? "Choose again to replace this selection" : "JPG, PNG, HEIC or WebP · up to 12MB each"}</span><input type="file" accept="image/*" multiple disabled={loading} onChange={chooseFiles} /></label>{previews.length > 0 && <div className="upload-previews" aria-label="Selected photo previews">{previews.map((preview, index) => <figure key={preview}><img src={preview} alt={`Selected garment photo ${index + 1}`} /><figcaption>{files[index]?.name}</figcaption></figure>)}</div>}{error && <p className="form-error">{error}</p>}<button className="primary-action upload-submit" disabled={loading}>{loading ? <LoaderCircle className="spin" size={17} /> : null}{loading ? "Adding to wardrobe…" : "Add to wardrobe"}</button>{loading && <p className="upload-progress">Your photos are being optimized and saved. Please keep this page open.</p>}</form>;
+  function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextFiles = Array.from(event.target.files ?? []).slice(0, 6);
+    setPreviews((current) => {
+      current.forEach(URL.revokeObjectURL);
+      return nextFiles.map((file) => URL.createObjectURL(file));
+    });
+    setFiles(nextFiles);
+    setError("");
+  }
+  async function upload(event: React.FormEvent) {
+    event.preventDefault();
+    if (!files.length) return setError("Choose at least one image.");
+    setLoading(true);
+    setError("");
+    const form = new FormData();
+    files.forEach((file) => form.append("photos", file));
+    try {
+      const response = await fetch("/api/items", { method: "POST", body: form });
+      const payload = await response.json();
+      if (!response.ok) {
+        setLoading(false);
+        return setError(payload.error);
+      }
+      router.push(`/items/${payload.itemId}`);
+      router.refresh();
+    } catch {
+      setLoading(false);
+      setError("Upload failed. Check your connection and try again.");
+    }
+  }
+  return (
+    <form className="upload-form" onSubmit={upload} aria-busy={loading}>
+      <label className={`drop-zone ${loading ? "is-disabled" : ""}`}>
+        <ImagePlus size={28} />
+        <strong>
+          {files.length
+            ? `${files.length} ${files.length === 1 ? "photo" : "photos"} selected`
+            : "Choose garment photos"}
+        </strong>
+        <span>
+          {files.length
+            ? "Choose again to replace this selection"
+            : "JPG, PNG, HEIC or WebP · up to 12MB each"}
+        </span>
+        <input type="file" accept="image/*" multiple disabled={loading} onChange={chooseFiles} />
+      </label>
+      {previews.length > 0 && (
+        <div className="upload-previews" aria-label="Selected photo previews">
+          {previews.map((preview, index) => (
+            <figure key={preview}>
+              <img src={preview} alt={`Selected garment photo ${index + 1}`} />
+              <figcaption>{files[index]?.name}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      {error && <p className="form-error">{error}</p>}
+      <button className="primary-action upload-submit" disabled={loading}>
+        {loading ? <LoaderCircle className="spin" size={17} /> : null}
+        {loading ? "Adding to wardrobe…" : "Add to wardrobe"}
+      </button>
+      {loading && (
+        <p className="upload-progress">
+          Your photos are being optimized and saved. Please keep this page open.
+        </p>
+      )}
+    </form>
+  );
 }
