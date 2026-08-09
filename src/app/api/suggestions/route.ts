@@ -14,7 +14,9 @@ export async function POST(request: Request) {
     if (selectedItemId && !items.some((item) => item.id === selectedItemId)) return NextResponse.json({ error: "Selected item not found" }, { status: 404 });
     const selected = selectedItemId ? items.find((item) => item.id === selectedItemId) : undefined;
     const result = await ai.suggest(selected ? `${prompt}\nThe user explicitly wants to use: ${selected.name}.` : prompt, items.map(({ id, name, description, category, primaryColor, material, fit, styleTags, seasons, formality }) => ({ id, name, description, category, primaryColor, material, fit, styleTags, seasons, formality })));
-    const [suggestion] = await db.insert(outfitSuggestions).values({ userId, request: prompt, selectedItemIds: selectedItemId ? [selectedItemId] : [], ...result }).returning();
-    return NextResponse.json(suggestion, { status: 201 });
+    const allowedIds = new Set(items.map((item) => item.id));
+    const referencedItemIds = result.referencedItemIds.filter((id) => allowedIds.has(id));
+    const [suggestion] = await db.insert(outfitSuggestions).values({ userId, request: prompt, selectedItemIds: referencedItemIds, recommendation: result.recommendation, rationale: result.rationale }).returning();
+    return NextResponse.json({ ...suggestion, referencedItemIds }, { status: 201 });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to suggest an outfit" }, { status: 400 }); }
 }
