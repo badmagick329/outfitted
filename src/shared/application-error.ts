@@ -13,6 +13,7 @@ export class ApplicationError extends Error {
 
 export const notFound = (message = "Not found") => new ApplicationError("NOT_FOUND", 404, message);
 export const unauthorized = () => new ApplicationError("UNAUTHORIZED", 401, "Sign in required");
+export const conflict = (message: string) => new ApplicationError("CONFLICT", 409, message);
 export const infrastructureFailure = (message = "Something went wrong. Please try again.") =>
   new ApplicationError("INFRASTRUCTURE_FAILURE", 500, message);
 
