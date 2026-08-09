@@ -2,21 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Archive, Shirt, Sparkles } from "lucide-react";
+import { Archive, ShieldCheck, Shirt, Sparkles } from "lucide-react";
 
-const destinations = [
+const coreDestinations = [
   {
     href: "/wardrobe",
     label: "Wardrobe",
     icon: Shirt,
     matches: (path: string) =>
       path.startsWith("/wardrobe") || path.startsWith("/items") || path.startsWith("/upload"),
-  },
-  {
-    href: "/outfits",
-    label: "Outfits",
-    icon: Sparkles,
-    matches: (path: string) => path.startsWith("/outfits"),
   },
   {
     href: "/archive",
@@ -26,14 +20,38 @@ const destinations = [
   },
 ];
 
-export function MobileNav() {
+export function MobileNav({ canUseAi, isAdmin }: { canUseAi: boolean; isAdmin: boolean }) {
   const pathname = usePathname();
+  const destinations = [
+    ...coreDestinations.slice(0, 1),
+    ...(canUseAi
+      ? [
+          {
+            href: "/outfits",
+            label: "Outfits",
+            icon: Sparkles,
+            matches: (path: string) => path.startsWith("/outfits"),
+          },
+        ]
+      : []),
+    ...coreDestinations.slice(1),
+    ...(isAdmin
+      ? [
+          {
+            href: "/admin/users",
+            label: "Admin",
+            icon: ShieldCheck,
+            matches: (path: string) => path.startsWith("/admin"),
+          },
+        ]
+      : []),
+  ];
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
       aria-label="Primary navigation"
     >
-      <div className="mx-auto grid max-w-md grid-cols-3 gap-1">
+      <div className="mx-auto grid max-w-md grid-flow-col auto-cols-fr gap-1">
         {destinations.map(({ href, label, icon: Icon, matches }) => {
           const active = matches(pathname);
           return (

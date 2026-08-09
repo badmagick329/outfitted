@@ -9,7 +9,11 @@ export type WardrobeCard = WardrobeItem & { coverPhotoId: string | null };
 export type AnalysisStatus = { id: string; status: string; updatedAt: Date };
 
 export interface WardrobeRepository {
-  create(ownerId: string, photos: ProcessedPhoto[]): Promise<WardrobeItem>;
+  create(
+    ownerId: string,
+    photos: ProcessedPhoto[],
+    analysisStatus: "pending" | "not_requested",
+  ): Promise<WardrobeItem>;
   findOwned(ownerId: string, itemId: string): Promise<WardrobeItem | null>;
   findById(itemId: string): Promise<WardrobeItem | null>;
   listActive(ownerId: string): Promise<WardrobeItem[]>;
@@ -22,6 +26,7 @@ export interface WardrobeRepository {
   listInProgress(ownerId: string): Promise<AnalysisStatus[]>;
   updateOwned(ownerId: string, itemId: string, values: UpdateWardrobeItemInput): Promise<void>;
   setAnalysisPending(ownerId: string, itemId: string): Promise<void>;
+  setAnalysisNotRequested(itemId: string): Promise<void>;
   setAnalysisProcessing(itemId: string): Promise<void>;
   completeAnalysis(itemId: string, result: WardrobeAnalysis, preserveEdits: boolean): Promise<void>;
   failAnalysis(itemId: string, message: string): Promise<void>;

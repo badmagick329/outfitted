@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Archive, CircleUserRound, Shirt, Sparkles } from "lucide-react";
+import { Archive, CircleUserRound, ShieldCheck, Shirt, Sparkles } from "lucide-react";
 import { AnalysisStatusPoller } from "@/components/analysis-status-poller";
 import { MobileNav } from "@/components/mobile-nav";
 import { SignOutButton } from "@/components/sign-out-button";
-import { auth } from "@/lib/auth";
+import { getCurrentAccess } from "@/features/access/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  const access = await getCurrentAccess();
+  if (!access) redirect("/login");
+  if (access.accessStatus !== "active") redirect("/access");
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <AnalysisStatusPoller />
-      <MobileNav />
+      {access.canUseAi && <AnalysisStatusPoller />}
+      <MobileNav canUseAi={access.canUseAi} isAdmin={access.isAdmin} />
       <aside className="sticky top-0 z-10 flex h-auto items-center justify-between border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur lg:h-screen lg:flex-col lg:items-stretch lg:justify-start lg:border-r lg:border-b-0 lg:px-5 lg:py-6">
         <Link href="/wardrobe" className="flex items-center gap-2 font-bold tracking-[-0.06em]">
           <span className="grid size-8 place-items-center rounded-lg bg-berry text-canvas shadow-[3px_3px_0_#d9f35a]">
@@ -27,23 +28,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           >
             <Shirt size={17} /> Wardrobe
           </Link>
-          <Link
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-mist"
-            href="/outfits"
-          >
-            <Sparkles size={17} /> Outfit desk
-          </Link>
+          {access.canUseAi && (
+            <Link
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-mist"
+              href="/outfits"
+            >
+              <Sparkles size={17} /> Outfit desk
+            </Link>
+          )}
           <Link
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-citrus"
             href="/archive"
           >
             <Archive size={17} /> Archive
           </Link>
+          {access.isAdmin && (
+            <Link
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-peach"
+              href="/admin/users"
+            >
+              <ShieldCheck size={17} /> Admin
+            </Link>
+          )}
         </nav>
         <div className="flex items-center gap-2 lg:mt-auto lg:border-t lg:border-line lg:pt-5">
           <CircleUserRound size={19} />
           <div className="hidden lg:block">
-            <strong className="block text-sm">{session.user.name ?? "Your wardrobe"}</strong>
+            <strong className="block text-sm">{access.name ?? "Your wardrobe"}</strong>
             <SignOutButton />
           </div>
         </div>

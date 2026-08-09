@@ -22,7 +22,7 @@ export const uploadPhotosSchema = z
 
 export const updateWardrobeItemSchema = z
   .object({
-    name: z.string().trim().min(1).max(160).optional(),
+    name: z.string().trim().max(160).optional(),
     description: optionalText(5000),
     category: optionalText(64),
     primaryColor: optionalText(64),

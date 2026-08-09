@@ -7,11 +7,15 @@ import type { ProcessedPhoto } from "../domain/ports";
 import type { WardrobeAnalysis } from "@/lib/ai";
 
 export class DrizzleWardrobeRepository implements WardrobeRepository {
-  async create(ownerId: string, photos: ProcessedPhoto[]) {
+  async create(
+    ownerId: string,
+    photos: ProcessedPhoto[],
+    analysisStatus: "pending" | "not_requested",
+  ) {
     return db.transaction(async (transaction) => {
       const [item] = await transaction
         .insert(wardrobeItems)
-        .values({ userId: ownerId, name: "New garment" })
+        .values({ userId: ownerId, name: "", analysisStatus })
         .returning();
       await transaction.insert(itemPhotos).values(
         photos.map((photo) => ({
@@ -152,6 +156,13 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
       .where(and(eq(wardrobeItems.id, itemId), eq(wardrobeItems.userId, ownerId)));
   }
 
+  async setAnalysisNotRequested(itemId: string) {
+    await db
+      .update(wardrobeItems)
+      .set({ analysisStatus: "not_requested", analysisError: null, updatedAt: new Date() })
+      .where(eq(wardrobeItems.id, itemId));
+  }
+
   async setAnalysisProcessing(itemId: string) {
     await db
       .update(wardrobeItems)
@@ -169,7 +180,7 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
           ? { analysisStatus: "complete", analysisError: null, updatedAt: new Date() }
           : {
               ...result,
-              name: item.name === "New garment" ? result.name : item.name,
+              name: item.name ? item.name : result.name,
               material: result.material ?? null,
               fit: result.fit ?? null,
               analysisStatus: "complete",

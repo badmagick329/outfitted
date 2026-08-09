@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUserId } from "@/lib/auth";
+import { requireActiveUser, requireAiUser } from "@/features/access/server";
 import {
   updateWardrobeItemSchema,
   wardrobeItemIdSchema,
@@ -9,7 +9,7 @@ import { routeError } from "@/shared/route-response";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/items/[id]">) {
   try {
-    const userId = await requireUserId();
+    const userId = (await requireActiveUser()).userId;
     const { id } = await context.params;
     await wardrobeService.update(
       userId,
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, context: RouteContext<"/api/items/
 
 export async function DELETE(_request: Request, context: RouteContext<"/api/items/[id]">) {
   try {
-    const userId = await requireUserId();
+    const userId = (await requireActiveUser()).userId;
     const { id } = await context.params;
     await wardrobeService.delete(userId, wardrobeItemIdSchema.parse(id));
     return new NextResponse(null, { status: 204 });
@@ -35,7 +35,7 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/item
 
 export async function POST(_request: Request, context: RouteContext<"/api/items/[id]">) {
   try {
-    const userId = await requireUserId();
+    const userId = (await requireAiUser()).userId;
     const { id } = await context.params;
     await wardrobeService.requestAnalysis(userId, wardrobeItemIdSchema.parse(id));
     return NextResponse.json({ ok: true });

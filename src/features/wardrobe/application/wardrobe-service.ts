@@ -56,7 +56,7 @@ export class WardrobeService {
     return this.dependencies.storage.read(photo.storageKey);
   }
 
-  async create(ownerId: string, files: File[]) {
+  async create(ownerId: string, files: File[], queueAnalysis: boolean) {
     const saved = [] as Array<{
       key: string;
       width: number;
@@ -90,9 +90,13 @@ export class WardrobeService {
         const image = await this.dependencies.storage.saveImage(upload.buffer, ownerId);
         saved.push({ ...image, position, contentHash: upload.contentHash });
       }
-      const item = await this.dependencies.repository.create(ownerId, saved);
+      const item = await this.dependencies.repository.create(
+        ownerId,
+        saved,
+        queueAnalysis ? "pending" : "not_requested",
+      );
       itemId = item.id;
-      await this.dependencies.jobs.enqueueAnalysis(item.id);
+      if (queueAnalysis) await this.dependencies.jobs.enqueueAnalysis(item.id);
       return item;
     } catch (error) {
       if (itemId) await this.dependencies.repository.deleteOwned(ownerId, itemId);
@@ -133,9 +137,13 @@ export class WardrobeService {
     await this.dependencies.repository.deleteOwned(ownerId, itemId);
   }
 
-  async analyze(itemId: string) {
+  async analyze(itemId: string, canUseAi: (ownerId: string) => Promise<boolean>) {
     const item = await this.dependencies.repository.findById(itemId);
     if (!item || item.analysisStatus === "complete") return;
+    if (!(await canUseAi(item.userId))) {
+      await this.dependencies.repository.setAnalysisNotRequested(itemId);
+      return;
+    }
     try {
       await this.dependencies.repository.setAnalysisProcessing(itemId);
       const photos = await this.dependencies.repository.listPhotos(itemId);
