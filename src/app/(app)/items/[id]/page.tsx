@@ -1,6 +1,7 @@
-/* eslint-disable @next/next/no-img-element -- authenticated private image routes cannot use Next's default image loader. */
 import { notFound } from "next/navigation";
 import { ItemEditor } from "@/components/item-editor";
+import { GarmentPhotoGallery } from "@/components/garment-photo-gallery";
+import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { requireUserId } from "@/lib/auth";
 import { wardrobeService } from "@/features/wardrobe/server";
 
@@ -21,8 +22,9 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
     <>
       <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div>
+          <WardrobeBackLink />
           <p className="font-mono text-xs font-bold tracking-[0.18em] text-berry">GARMENT RECORD</p>
-          <h1 className="mt-2 max-w-4xl text-4xl font-bold tracking-[-0.05em] sm:text-5xl">
+          <h1 className="mt-3 max-w-4xl text-4xl font-bold tracking-[-0.05em] sm:text-5xl">
             {item.name}
           </h1>
           <p className="mt-3 text-ink/65">
@@ -41,17 +43,11 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
           </span>
         )}
       </header>
-      <div className="mt-9 grid gap-8 xl:grid-cols-[minmax(0,0.8fr)_minmax(28rem,0.9fr)]">
-        <div className="grid grid-cols-2 gap-4 self-start">
-          {photos.map((photo) => (
-            <img
-              key={photo.id}
-              src={`/api/photos/${photo.id}`}
-              alt={item.name}
-              className="w-full rounded-2xl bg-mist object-cover shadow-[4px_4px_0_var(--color-peach)]"
-            />
-          ))}
-        </div>
+      <div className="mt-9 grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(30rem,0.9fr)]">
+        <GarmentPhotoGallery
+          itemName={item.name}
+          photos={photos.map((photo) => ({ id: photo.id, src: `/api/photos/${photo.id}` }))}
+        />
         <ItemEditor key={`${item.id}-${item.updatedAt.toISOString()}`} item={item} />
       </div>
     </>

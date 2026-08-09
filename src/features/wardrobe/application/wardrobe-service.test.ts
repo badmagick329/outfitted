@@ -29,6 +29,7 @@ function dependencies({ enqueue = vi.fn().mockResolvedValue(undefined) } = {}) {
   const repository = {
     create: vi.fn().mockResolvedValue(item),
     deleteOwned: vi.fn().mockResolvedValue(undefined),
+    findOwnedPhotoByContentHash: vi.fn().mockResolvedValue(null),
   } as unknown as WardrobeRepository;
   const storage = {
     saveImage: vi.fn().mockResolvedValue({ key: "user-1/photo.webp", width: 100, height: 100 }),
@@ -62,5 +63,17 @@ describe("WardrobeService.create", () => {
       service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })]),
     ).resolves.toEqual(item);
     expect(jobs.enqueueAnalysis).toHaveBeenCalledWith("item-1");
+  });
+
+  it("rejects an image already stored by the same owner before processing it", async () => {
+    const { repository, storage, jobs, ai } = dependencies();
+    vi.mocked(repository.findOwnedPhotoByContentHash).mockResolvedValueOnce({} as never);
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await expect(
+      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })]),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(storage.saveImage).not.toHaveBeenCalled();
+    expect(repository.create).not.toHaveBeenCalled();
   });
 });

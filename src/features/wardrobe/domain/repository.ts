@@ -17,6 +17,7 @@ export interface WardrobeRepository {
   listActiveCards(ownerId: string): Promise<WardrobeCard[]>;
   listOwnedPhotos(ownerId: string, itemId: string): Promise<WardrobePhoto[]>;
   findOwnedPhoto(ownerId: string, photoId: string): Promise<WardrobePhoto | null>;
+  findOwnedPhotoByContentHash(ownerId: string, contentHash: string): Promise<WardrobePhoto | null>;
   listPhotos(itemId: string): Promise<WardrobePhoto[]>;
   listInProgress(ownerId: string): Promise<AnalysisStatus[]>;
   updateOwned(ownerId: string, itemId: string, values: UpdateWardrobeItemInput): Promise<void>;

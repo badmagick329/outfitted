@@ -1,0 +1,1 @@
+ALTER TABLE "item_photos" ADD COLUMN "content_hash" varchar(64);

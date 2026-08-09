@@ -95,6 +95,7 @@ export const itemPhotos = pgTable("item_photos", {
     .notNull()
     .references(() => wardrobeItems.id, { onDelete: "cascade" }),
   storageKey: text("storage_key").notNull().unique(),
+  contentHash: varchar("content_hash", { length: 64 }),
   width: integer("width").notNull(),
   height: integer("height").notNull(),
   mimeType: varchar("mime_type", { length: 64 }).notNull().default("image/webp"),

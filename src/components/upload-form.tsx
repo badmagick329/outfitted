@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, LoaderCircle } from "lucide-react";
+import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
 
 export function UploadForm() {
   const router = useRouter();
@@ -12,6 +13,13 @@ export function UploadForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
+
+  const previewImages: ViewerImage[] = previews.map((src, index) => ({
+    src,
+    alt: `Selected garment photo ${index + 1}`,
+    label: files[index]?.name,
+  }));
 
   useEffect(() => () => previews.forEach(URL.revokeObjectURL), [previews]);
 
@@ -22,7 +30,18 @@ export function UploadForm() {
       return nextFiles.map((file) => URL.createObjectURL(file));
     });
     setFiles(nextFiles);
+    setSelectedPreview(null);
     setError("");
+    event.target.value = "";
+  }
+
+  function removeFile(index: number) {
+    setFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    setPreviews((current) => {
+      URL.revokeObjectURL(current[index]);
+      return current.filter((_, currentIndex) => currentIndex !== index);
+    });
+    setSelectedPreview(null);
   }
 
   async function upload(event: React.FormEvent) {
@@ -83,12 +102,30 @@ export function UploadForm() {
           aria-label="Selected photo previews"
         >
           {previews.map((preview, index) => (
-            <figure key={preview} className="overflow-hidden rounded-xl border border-line bg-mist">
-              <img
-                src={preview}
-                alt={`Selected garment photo ${index + 1}`}
-                className="aspect-square w-full object-cover"
-              />
+            <figure
+              key={preview}
+              className="relative overflow-hidden rounded-xl border border-line bg-mist"
+            >
+              <button
+                type="button"
+                className="group block w-full overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+                onClick={() => setSelectedPreview(index)}
+                aria-label={`View larger selected garment photo ${index + 1}`}
+              >
+                <img
+                  src={preview}
+                  alt={`Selected garment photo ${index + 1}`}
+                  className="aspect-square w-full object-cover transition duration-200 group-hover:scale-[1.03]"
+                />
+              </button>
+              <button
+                type="button"
+                className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-ink/80 text-canvas transition hover:bg-berry focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
+                onClick={() => removeFile(index)}
+                aria-label={`Remove ${files[index]?.name ?? `photo ${index + 1}`} from selection`}
+              >
+                <X size={14} />
+              </button>
               <figcaption className="truncate px-2 py-2 font-mono text-[10px] text-ink/60">
                 {files[index]?.name}
               </figcaption>
@@ -96,6 +133,16 @@ export function UploadForm() {
           ))}
         </div>
       )}
+
+      <ImageViewerDialog
+        images={previewImages}
+        activeIndex={selectedPreview ?? 0}
+        onActiveIndexChange={setSelectedPreview}
+        open={selectedPreview !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPreview(null);
+        }}
+      />
 
       {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       <Button className="mt-6 w-full" type="submit" disabled={loading} size="lg">

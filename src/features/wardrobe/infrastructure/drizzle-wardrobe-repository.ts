@@ -17,6 +17,7 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
         photos.map((photo) => ({
           itemId: item.id,
           storageKey: photo.key,
+          contentHash: photo.contentHash,
           width: photo.width,
           height: photo.height,
           position: photo.position,
@@ -89,6 +90,16 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
       .from(itemPhotos)
       .innerJoin(wardrobeItems, eq(itemPhotos.itemId, wardrobeItems.id))
       .where(and(eq(itemPhotos.id, photoId), eq(wardrobeItems.userId, ownerId)))
+      .limit(1);
+    return row?.photo ?? null;
+  }
+
+  async findOwnedPhotoByContentHash(ownerId: string, contentHash: string) {
+    const [row] = await db
+      .select({ photo: itemPhotos })
+      .from(itemPhotos)
+      .innerJoin(wardrobeItems, eq(itemPhotos.itemId, wardrobeItems.id))
+      .where(and(eq(itemPhotos.contentHash, contentHash), eq(wardrobeItems.userId, ownerId)))
       .limit(1);
     return row?.photo ?? null;
   }

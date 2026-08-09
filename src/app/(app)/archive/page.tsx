@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArchiveRestore } from "lucide-react";
+import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { requireUserId } from "@/lib/auth";
 import { wardrobeService } from "@/features/wardrobe/server";
 
@@ -8,8 +9,9 @@ export default async function ArchivePage() {
   return (
     <>
       <header>
+        <WardrobeBackLink />
         <p className="font-mono text-xs font-bold tracking-[0.18em] text-berry">PAST PIECES</p>
-        <h1 className="mt-2 text-4xl font-bold tracking-[-0.05em] sm:text-5xl">Archive</h1>
+        <h1 className="mt-3 text-4xl font-bold tracking-[-0.05em] sm:text-5xl">Archive</h1>
         <p className="mt-3 text-ink/65">Archived pieces are kept out of outfit suggestions.</p>
       </header>
       <section className="mt-9 max-w-3xl space-y-3">

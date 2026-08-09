@@ -1,4 +1,10 @@
-import { infrastructureFailure, notFound } from "@/shared/application-error";
+import { createHash } from "node:crypto";
+import {
+  ApplicationError,
+  conflict,
+  infrastructureFailure,
+  notFound,
+} from "@/shared/application-error";
 import type { UpdateWardrobeItemInput } from "../domain/contracts";
 import type { AnalysisJobQueue, WardrobeAi, WardrobeStorage } from "../domain/ports";
 import type { WardrobeRepository } from "../domain/repository";
@@ -51,23 +57,47 @@ export class WardrobeService {
   }
 
   async create(ownerId: string, files: File[]) {
-    const saved = [] as Array<{ key: string; width: number; height: number; position: number }>;
+    const saved = [] as Array<{
+      key: string;
+      width: number;
+      height: number;
+      position: number;
+      contentHash: string;
+    }>;
     let itemId: string | null = null;
     try {
-      for (const [position, file] of files.entries()) {
-        const image = await this.dependencies.storage.saveImage(
-          Buffer.from(await file.arrayBuffer()),
-          ownerId,
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          return { buffer, contentHash: createHash("sha256").update(buffer).digest("hex") };
+        }),
+      );
+      const hashes = new Set(uploads.map((upload) => upload.contentHash));
+      if (hashes.size !== uploads.length)
+        throw conflict(
+          "The same image was selected more than once. Remove the duplicate and try again.",
         );
-        saved.push({ ...image, position });
+      for (const upload of uploads) {
+        if (
+          await this.dependencies.repository.findOwnedPhotoByContentHash(
+            ownerId,
+            upload.contentHash,
+          )
+        )
+          throw conflict("That exact image is already in your wardrobe.");
+      }
+      for (const [position, upload] of uploads.entries()) {
+        const image = await this.dependencies.storage.saveImage(upload.buffer, ownerId);
+        saved.push({ ...image, position, contentHash: upload.contentHash });
       }
       const item = await this.dependencies.repository.create(ownerId, saved);
       itemId = item.id;
       await this.dependencies.jobs.enqueueAnalysis(item.id);
       return item;
-    } catch {
+    } catch (error) {
       if (itemId) await this.dependencies.repository.deleteOwned(ownerId, itemId);
       await Promise.allSettled(saved.map((image) => this.dependencies.storage.delete(image.key)));
+      if (error instanceof ApplicationError) throw error;
       throw infrastructureFailure(
         "We couldn’t finish saving this garment. No wardrobe record was created; please try again.",
       );
