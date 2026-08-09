@@ -4,6 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Item = {
   id: string;
@@ -35,6 +46,8 @@ export function ItemEditor({ item }: { item: Item }) {
   const [data, setData] = useState(item);
   const [saving, setSaving] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const isAnalyzing = item.analysisStatus === "pending" || item.analysisStatus === "processing";
   const set = (key: keyof Item, value: string) =>
@@ -94,11 +107,19 @@ export function ItemEditor({ item }: { item: Item }) {
   }
 
   async function remove() {
-    if (!confirm("Permanently delete this garment and its photos?")) return;
-    const response = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
-    if (!response.ok) return setError(await messageFrom(response, "Couldn’t delete this garment."));
-    router.push("/wardrobe");
-    router.refresh();
+    setDeleting(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+      if (!response.ok)
+        return setError(await messageFrom(response, "Couldn’t delete this garment."));
+      router.push("/wardrobe");
+      router.refresh();
+    } catch {
+      setError("Couldn’t delete this garment. Check your connection and try again.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -229,14 +250,57 @@ export function ItemEditor({ item }: { item: Item }) {
             >
               <Archive size={15} /> {item.archivedAt ? "Restore garment" : "Archive garment"}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-700 hover:bg-red-50 hover:text-red-700"
-              onClick={remove}
+            <AlertDialog
+              open={deleteOpen}
+              onOpenChange={(open) => {
+                if (!deleting) setDeleteOpen(open);
+              }}
             >
-              <Trash2 size={15} /> Delete permanently
-            </Button>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-700 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setError("")}
+                >
+                  <Trash2 size={15} /> Delete permanently
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {item.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently removes the garment record and all of its stored photos. This
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {error && (
+                  <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {error}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel asChild>
+                    <Button variant="outline" disabled={deleting}>
+                      Cancel
+                    </Button>
+                  </AlertDialogCancel>
+                  <AlertDialogAction asChild>
+                    <Button
+                      variant="destructive"
+                      disabled={deleting}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void remove();
+                      }}
+                    >
+                      {deleting && <LoaderCircle className="animate-spin" size={16} />}
+                      {deleting ? "Deleting…" : "Delete permanently"}
+                    </Button>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       )}
