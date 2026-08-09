@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const files = formData.getAll("photos").filter((value): value is File => value instanceof File);
     if (!files.length || files.length > 6) return NextResponse.json({ error: "Upload between 1 and 6 photos." }, { status: 400 });
     for (const file of files) if (!file.type.startsWith("image/") || file.size > MAX_FILE_SIZE) return NextResponse.json({ error: "Each file must be an image under 12MB." }, { status: 400 });
-    const [item] = await db.insert(wardrobeItems).values({ userId, name: String(formData.get("name") || "New garment") }).returning();
+    const [item] = await db.insert(wardrobeItems).values({ userId, name: "New garment" }).returning();
     const saved = await Promise.all(files.map(async (file) => storage.saveImage(Buffer.from(await file.arrayBuffer()), userId)));
     await db.insert(itemPhotos).values(saved.map((image, position) => ({ itemId: item.id, storageKey: image.key, width: image.width, height: image.height, position })));
     await enqueueAnalysis(item.id);
