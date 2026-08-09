@@ -35,4 +35,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=dependencies /usr/local/bin/bun /usr/local/bin/bun
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+# Docker injects the container ID as HOSTNAME. Next's standalone server uses
+# that value as its listen address unless it is overridden, which leaves
+# localhost health checks unable to connect. Bind explicitly to all interfaces.
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node server.js"]
