@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, ChevronDown, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -41,7 +41,7 @@ async function messageFrom(response: Response, fallback: string) {
   return payload?.error?.message ?? fallback;
 }
 
-export function ItemEditor({ item }: { item: Item }) {
+export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }) {
   const router = useRouter();
   const [data, setData] = useState(item);
   const [saving, setSaving] = useState(false);
@@ -50,6 +50,18 @@ export function ItemEditor({ item }: { item: Item }) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const isAnalyzing = item.analysisStatus === "pending" || item.analysisStatus === "processing";
+  const hasDetails = Boolean(
+    item.name ||
+      item.description ||
+      item.category ||
+      item.primaryColor ||
+      item.material ||
+      item.fit ||
+      item.formality ||
+      item.styleTags.length ||
+      item.seasons.length,
+  );
+  const [detailsOpen, setDetailsOpen] = useState(canUseAi || hasDetails || isAnalyzing);
   const set = (key: keyof Item, value: string) =>
     setData((previous) => ({ ...previous, [key]: value }));
 
@@ -123,20 +135,32 @@ export function ItemEditor({ item }: { item: Item }) {
   }
 
   return (
-    <section className="rounded-3xl border border-line bg-canvas p-5 shadow-[5px_5px_0_var(--color-mist)] sm:p-7">
-      <div className="flex items-center justify-between gap-4">
+    <section className="self-start rounded-3xl border border-line bg-canvas p-5 shadow-[5px_5px_0_var(--color-mist)] sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-[-0.04em]">Details</h2>
-        {isAnalyzing ? (
+        <div className="flex items-center gap-2">
+          {!canUseAi && !isAnalyzing && (
+            <Button variant="ghost" size="sm" onClick={() => setDetailsOpen((open) => !open)}>
+              <ChevronDown size={14} className={detailsOpen ? "rotate-180 transition" : "transition"} />
+              {detailsOpen ? "Hide details" : "Add optional details"}
+            </Button>
+          )}
+          {isAnalyzing ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-citrus/40 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide">
             <LoaderCircle className="animate-spin" size={14} />
             {item.analysisStatus === "processing" ? "Analyzing" : "Queued"}
           </span>
-        ) : (
+          ) : canUseAi ? (
           <Button variant="ghost" size="sm" onClick={retry} disabled={retrying}>
             <RotateCcw size={14} className={retrying ? "animate-spin" : ""} />
-            {retrying ? "Queuing…" : "Re-analyze"}
+            {retrying
+              ? "Queuing…"
+              : item.analysisStatus === "not_requested"
+                ? "Analyse garment"
+                : "Re-analyze"}
           </Button>
-        )}
+          ) : null}
+        </div>
       </div>
 
       {isAnalyzing ? (
@@ -156,7 +180,7 @@ export function ItemEditor({ item }: { item: Item }) {
             </p>
           </div>
         </div>
-      ) : (
+      ) : detailsOpen ? (
         <div className="mt-6 space-y-5">
           {(error || data.analysisStatus === "failed") && (
             <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -242,68 +266,64 @@ export function ItemEditor({ item }: { item: Item }) {
             {saving && <LoaderCircle className="animate-spin" size={17} />}
             {saving ? "Saving…" : "Save details"}
           </Button>
-          <div className="flex flex-wrap gap-2 border-t border-line pt-5">
+        </div>
+      ) : null}
+      <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => changeArchive(item.archivedAt ? null : new Date().toISOString())}
+        >
+          <Archive size={15} /> {item.archivedAt ? "Restore garment" : "Archive garment"}
+        </Button>
+        <AlertDialog
+          open={deleteOpen}
+          onOpenChange={(open) => {
+            if (!deleting) setDeleteOpen(open);
+          }}
+        >
+          <AlertDialogTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => changeArchive(item.archivedAt ? null : new Date().toISOString())}
+              className="text-red-700 hover:bg-red-50 hover:text-red-700"
+              onClick={() => setError("")}
             >
-              <Archive size={15} /> {item.archivedAt ? "Restore garment" : "Archive garment"}
+              <Trash2 size={15} /> Delete permanently
             </Button>
-            <AlertDialog
-              open={deleteOpen}
-              onOpenChange={(open) => {
-                if (!deleting) setDeleteOpen(open);
-              }}
-            >
-              <AlertDialogTrigger asChild>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {item.name || "this garment"}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes the garment record and all of its stored photos. This
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {error && (
+              <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel asChild>
+                <Button variant="outline" disabled={deleting}>Cancel</Button>
+              </AlertDialogCancel>
+              <AlertDialogAction asChild>
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-700 hover:bg-red-50 hover:text-red-700"
-                  onClick={() => setError("")}
+                  variant="destructive"
+                  disabled={deleting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void remove();
+                  }}
                 >
-                  <Trash2 size={15} /> Delete permanently
+                  {deleting && <LoaderCircle className="animate-spin" size={16} />}
+                  {deleting ? "Deleting…" : "Delete permanently"}
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete {item.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This permanently removes the garment record and all of its stored photos. This
-                    cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                {error && (
-                  <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {error}
-                  </p>
-                )}
-                <AlertDialogFooter>
-                  <AlertDialogCancel asChild>
-                    <Button variant="outline" disabled={deleting}>
-                      Cancel
-                    </Button>
-                  </AlertDialogCancel>
-                  <AlertDialogAction asChild>
-                    <Button
-                      variant="destructive"
-                      disabled={deleting}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        void remove();
-                      }}
-                    >
-                      {deleting && <LoaderCircle className="animate-spin" size={16} />}
-                      {deleting ? "Deleting…" : "Delete permanently"}
-                    </Button>
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </section>
   );
 }

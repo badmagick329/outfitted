@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArchiveRestore } from "lucide-react";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
-import { requireUserId } from "@/lib/auth";
+import { requireActiveUser } from "@/features/access/server";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function ArchivePage() {
-  const items = await wardrobeService.listArchived(await requireUserId());
+  const items = await wardrobeService.listArchived((await requireActiveUser()).userId);
   return (
     <>
       <header>

@@ -1,9 +1,12 @@
 import { OutfitDesk } from "@/components/outfit-desk";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
-import { requireUserId } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { requireActiveUser } from "@/features/access/server";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function OutfitsPage() {
+  const access = await requireActiveUser();
+  if (!access.canUseAi) redirect("/wardrobe");
   return (
     <>
       <header className="rounded-3xl border border-line bg-mist/75 p-6 shadow-[5px_5px_0_var(--color-peach)] sm:p-8">
@@ -16,7 +19,7 @@ export default async function OutfitsPage() {
         </h1>
         <p className="mt-3 text-ink/65">Tell us the plan and we’ll put a look together.</p>
       </header>
-      <OutfitDesk items={await wardrobeService.listActive(await requireUserId())} />
+      <OutfitDesk items={await wardrobeService.listActive(access.userId)} />
     </>
   );
 }

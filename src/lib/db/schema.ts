@@ -22,7 +22,24 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
+  accessStatus: varchar("access_status", { length: 16 }).notNull().default("pending"),
+  featureTier: varchar("feature_tier", { length: 16 }).notNull().default("inventory"),
   ...timestamps,
+});
+
+export const accessAuditEvents = pgTable("access_audit_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  actorUserId: text("actor_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  previousAccessStatus: varchar("previous_access_status", { length: 16 }).notNull(),
+  nextAccessStatus: varchar("next_access_status", { length: 16 }).notNull(),
+  previousFeatureTier: varchar("previous_feature_tier", { length: 16 }).notNull(),
+  nextFeatureTier: varchar("next_feature_tier", { length: 16 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const accounts = pgTable(
@@ -68,7 +85,7 @@ export const wardrobeItems = pgTable("wardrobe_items", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 160 }).notNull().default("New garment"),
+  name: varchar("name", { length: 160 }).notNull().default(""),
   description: text("description"),
   category: varchar("category", { length: 64 }),
   primaryColor: varchar("primary_color", { length: 64 }),
@@ -82,7 +99,7 @@ export const wardrobeItems = pgTable("wardrobe_items", {
     .$type<Array<{ field: string; level: "high" | "medium" | "low"; note: string }>>()
     .notNull()
     .default([]),
-  analysisStatus: varchar("analysis_status", { length: 24 }).notNull().default("pending"),
+  analysisStatus: varchar("analysis_status", { length: 24 }).notNull().default("not_requested"),
   analysisError: text("analysis_error"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   metadataEditedAt: timestamp("metadata_edited_at", { withTimezone: true }),

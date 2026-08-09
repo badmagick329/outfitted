@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- authenticated private image routes cannot use Next's default image loader. */
 import Link from "next/link";
 import { Plus, Search, Shirt } from "lucide-react";
-import { requireUserId } from "@/lib/auth";
+import { requireActiveUser } from "@/features/access/server";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 const statusStyles = {
@@ -11,7 +11,7 @@ const statusStyles = {
 };
 
 export default async function WardrobePage() {
-  const items = await wardrobeService.listActiveCards(await requireUserId());
+  const items = await wardrobeService.listActiveCards((await requireActiveUser()).userId);
 
   return (
     <>
@@ -30,12 +30,11 @@ export default async function WardrobePage() {
         </Link>
       </header>
 
-      <div className="mt-9 flex items-center justify-between gap-4 border-y-2 border-teal/25 py-3 text-sm text-ink/60">
+      <div className="mt-9 flex items-center gap-4 border-y-2 border-teal/25 py-3 text-sm text-ink/60">
         <div className="flex min-w-0 items-center gap-2">
           <Search size={16} className="shrink-0" />
           <span className="font-mono text-xs">Your full collection</span>
         </div>
-        <span className="hidden font-mono text-xs sm:block">LIVE CATALOGUE</span>
       </div>
 
       {items.length ? (
@@ -55,21 +54,21 @@ export default async function WardrobePage() {
               ) : (
                 <div className="aspect-[4/5] bg-mist" />
               )}
-              <div className="flex min-w-0 items-start justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <strong className="block break-words text-base leading-tight">{item.name}</strong>
-                  <span className="mt-1 block text-sm text-ink/60">
-                    {item.category ?? "Processing details"}
-                  </span>
-                </div>
-                {item.analysisStatus !== "complete" && (
+              {(item.name || item.category || ["failed", "pending", "processing"].includes(item.analysisStatus)) && (
+                <div className="flex min-w-0 items-start justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    {item.name && <strong className="block break-words text-base leading-tight">{item.name}</strong>}
+                    {item.category && <span className="mt-1 block text-sm text-ink/60">{item.category}</span>}
+                  </div>
+                  {["failed", "pending", "processing"].includes(item.analysisStatus) && (
                   <span
                     className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
                   >
                     {item.analysisStatus}
                   </span>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </Link>
           ))}
         </div>

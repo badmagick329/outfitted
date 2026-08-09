@@ -29,7 +29,9 @@ function dependencies({ enqueue = vi.fn().mockResolvedValue(undefined) } = {}) {
   const repository = {
     create: vi.fn().mockResolvedValue(item),
     deleteOwned: vi.fn().mockResolvedValue(undefined),
+    findById: vi.fn().mockResolvedValue(null),
     findOwnedPhotoByContentHash: vi.fn().mockResolvedValue(null),
+    setAnalysisNotRequested: vi.fn().mockResolvedValue(undefined),
   } as unknown as WardrobeRepository;
   const storage = {
     saveImage: vi.fn().mockResolvedValue({ key: "user-1/photo.webp", width: 100, height: 100 }),
@@ -47,7 +49,7 @@ describe("WardrobeService.create", () => {
     const service = new WardrobeService({ repository, storage, jobs, ai });
 
     await expect(
-      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })]),
+      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })], true),
     ).rejects.toMatchObject({ status: 500 });
 
     expect(repository.create).toHaveBeenCalledOnce();
@@ -60,7 +62,7 @@ describe("WardrobeService.create", () => {
     const service = new WardrobeService({ repository, storage, jobs, ai });
 
     await expect(
-      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })]),
+      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })], true),
     ).resolves.toEqual(item);
     expect(jobs.enqueueAnalysis).toHaveBeenCalledWith("item-1");
   });
@@ -71,9 +73,34 @@ describe("WardrobeService.create", () => {
     const service = new WardrobeService({ repository, storage, jobs, ai });
 
     await expect(
-      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })]),
+      service.create("user-1", [new File(["image"], "top.webp", { type: "image/webp" })], true),
     ).rejects.toMatchObject({ status: 409 });
     expect(storage.saveImage).not.toHaveBeenCalled();
     expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it("creates an inventory-only garment without queuing AI analysis", async () => {
+    const { repository, storage, jobs, ai } = dependencies();
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await service.create(
+      "user-1",
+      [new File(["image"], "top.webp", { type: "image/webp" })],
+      false,
+    );
+
+    expect(repository.create).toHaveBeenCalledWith("user-1", expect.any(Array), "not_requested");
+    expect(jobs.enqueueAnalysis).not.toHaveBeenCalled();
+  });
+
+  it("does not invoke AI when access has been revoked before a job starts", async () => {
+    const { repository, storage, jobs, ai } = dependencies();
+    vi.mocked(repository.findById).mockResolvedValue(item as never);
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await service.analyze("item-1", async () => false);
+
+    expect(repository.setAnalysisNotRequested).toHaveBeenCalledWith("item-1");
+    expect(ai.analyze).not.toHaveBeenCalled();
   });
 });
