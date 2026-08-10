@@ -54,18 +54,26 @@ export default async function WardrobePage() {
               ) : (
                 <div className="aspect-[4/5] bg-mist" />
               )}
-              {(item.name || item.category || ["failed", "pending", "processing"].includes(item.analysisStatus)) && (
+              {(item.name ||
+                item.category ||
+                ["failed", "pending", "processing"].includes(item.analysisStatus)) && (
                 <div className="flex min-w-0 items-start justify-between gap-3 p-4">
                   <div className="min-w-0">
-                    {item.name && <strong className="block break-words text-base leading-tight">{item.name}</strong>}
-                    {item.category && <span className="mt-1 block text-sm text-ink/60">{item.category}</span>}
+                    {item.name && (
+                      <strong className="block break-words text-base leading-tight">
+                        {item.name}
+                      </strong>
+                    )}
+                    {item.category && (
+                      <span className="mt-1 block text-sm text-ink/60">{item.category}</span>
+                    )}
                   </div>
                   {["failed", "pending", "processing"].includes(item.analysisStatus) && (
-                  <span
-                    className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
-                  >
-                    {item.analysisStatus}
-                  </span>
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide ${statusStyles[item.analysisStatus as keyof typeof statusStyles] ?? statusStyles.pending}`}
+                    >
+                      {item.analysisStatus}
+                    </span>
                   )}
                 </div>
               )}

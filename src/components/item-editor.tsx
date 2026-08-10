@@ -52,14 +52,14 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
   const isAnalyzing = item.analysisStatus === "pending" || item.analysisStatus === "processing";
   const hasDetails = Boolean(
     item.name ||
-      item.description ||
-      item.category ||
-      item.primaryColor ||
-      item.material ||
-      item.fit ||
-      item.formality ||
-      item.styleTags.length ||
-      item.seasons.length,
+    item.description ||
+    item.category ||
+    item.primaryColor ||
+    item.material ||
+    item.fit ||
+    item.formality ||
+    item.styleTags.length ||
+    item.seasons.length,
   );
   const [detailsOpen, setDetailsOpen] = useState(canUseAi || hasDetails || isAnalyzing);
   const set = (key: keyof Item, value: string) =>
@@ -141,24 +141,27 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
         <div className="flex items-center gap-2">
           {!canUseAi && !isAnalyzing && (
             <Button variant="ghost" size="sm" onClick={() => setDetailsOpen((open) => !open)}>
-              <ChevronDown size={14} className={detailsOpen ? "rotate-180 transition" : "transition"} />
+              <ChevronDown
+                size={14}
+                className={detailsOpen ? "rotate-180 transition" : "transition"}
+              />
               {detailsOpen ? "Hide details" : "Add optional details"}
             </Button>
           )}
           {isAnalyzing ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-citrus/40 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide">
-            <LoaderCircle className="animate-spin" size={14} />
-            {item.analysisStatus === "processing" ? "Analyzing" : "Queued"}
-          </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-citrus/40 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide">
+              <LoaderCircle className="animate-spin" size={14} />
+              {item.analysisStatus === "processing" ? "Analyzing" : "Queued"}
+            </span>
           ) : canUseAi ? (
-          <Button variant="ghost" size="sm" onClick={retry} disabled={retrying}>
-            <RotateCcw size={14} className={retrying ? "animate-spin" : ""} />
-            {retrying
-              ? "Queuing…"
-              : item.analysisStatus === "not_requested"
-                ? "Analyse garment"
-                : "Re-analyze"}
-          </Button>
+            <Button variant="ghost" size="sm" onClick={retry} disabled={retrying}>
+              <RotateCcw size={14} className={retrying ? "animate-spin" : ""} />
+              {retrying
+                ? "Queuing…"
+                : item.analysisStatus === "not_requested"
+                  ? "Analyse garment"
+                  : "Re-analyze"}
+            </Button>
           ) : null}
         </div>
       </div>
@@ -305,7 +308,9 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
             )}
             <AlertDialogFooter>
               <AlertDialogCancel asChild>
-                <Button variant="outline" disabled={deleting}>Cancel</Button>
+                <Button variant="outline" disabled={deleting}>
+                  Cancel
+                </Button>
               </AlertDialogCancel>
               <AlertDialogAction asChild>
                 <Button

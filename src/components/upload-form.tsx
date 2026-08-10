@@ -7,10 +7,19 @@ import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
 
+const maxPhotos = 6;
+const maxPhotoSize = 12 * 1024 * 1024;
+
+type UploadResponse = {
+  itemId?: unknown;
+  error?: { message?: unknown };
+};
+
 export function UploadForm() {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
   const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
@@ -24,7 +33,24 @@ export function UploadForm() {
   useEffect(() => () => previews.forEach(URL.revokeObjectURL), [previews]);
 
   function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) {
-    const nextFiles = Array.from(event.target.files ?? []).slice(0, 6);
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    const nonImage = selectedFiles.find((file) => !file.type.startsWith("image/"));
+    if (nonImage) {
+      setError(`${nonImage.name} isn’t an image. Choose JPG, PNG, HEIC, or WebP files.`);
+      setNotice("");
+      return;
+    }
+
+    const oversized = selectedFiles.find((file) => file.size > maxPhotoSize);
+    if (oversized) {
+      setError(`${oversized.name} is larger than 12MB. Choose a smaller photo.`);
+      setNotice("");
+      return;
+    }
+
+    const nextFiles = selectedFiles.slice(0, maxPhotos);
     setPreviews((current) => {
       current.forEach(URL.revokeObjectURL);
       return nextFiles.map((file) => URL.createObjectURL(file));
@@ -32,7 +58,11 @@ export function UploadForm() {
     setFiles(nextFiles);
     setSelectedPreview(null);
     setError("");
-    event.target.value = "";
+    setNotice(
+      selectedFiles.length > maxPhotos
+        ? "You can upload up to six photos. We kept the first six you selected."
+        : "",
+    );
   }
 
   function removeFile(index: number) {
@@ -42,6 +72,7 @@ export function UploadForm() {
       return current.filter((_, currentIndex) => currentIndex !== index);
     });
     setSelectedPreview(null);
+    setNotice("");
   }
 
   async function upload(event: React.FormEvent) {
@@ -53,10 +84,18 @@ export function UploadForm() {
     files.forEach((file) => form.append("photos", file));
     try {
       const response = await fetch("/api/items", { method: "POST", body: form });
-      const payload = await response.json();
+      const payload = (await response.json().catch(() => null)) as UploadResponse | null;
       if (!response.ok) {
         setLoading(false);
-        return setError(payload.error?.message ?? "Upload failed. Please try again.");
+        return setError(
+          typeof payload?.error?.message === "string"
+            ? payload.error.message
+            : "Upload failed. Please try again.",
+        );
+      }
+      if (typeof payload?.itemId !== "string") {
+        setLoading(false);
+        return setError("The upload finished unexpectedly. Please try again.");
       }
       router.push(`/items/${payload.itemId}`);
       router.refresh();
@@ -73,7 +112,7 @@ export function UploadForm() {
       aria-busy={loading}
     >
       <label
-        className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${loading ? "pointer-events-none border-line bg-mist opacity-70" : "border-teal/50 bg-mist/50 hover:border-berry hover:bg-peach/40"}`}
+        className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 ${loading ? "pointer-events-none border-line bg-mist opacity-70" : "border-teal/50 bg-mist/50 hover:border-berry hover:bg-peach/40"}`}
       >
         <ImagePlus size={32} className="text-berry" />
         <strong className="mt-4 text-lg">
@@ -81,10 +120,14 @@ export function UploadForm() {
             ? `${files.length} ${files.length === 1 ? "photo" : "photos"} selected`
             : "Choose garment photos"}
         </strong>
-        <span className="mt-2 text-sm text-ink/60">
+        <span id="photo-requirements" className="mt-2 text-sm text-ink/60">
           {files.length
             ? "Choose again to replace this selection"
             : "JPG, PNG, HEIC or WebP · up to 12MB each"}
+        </span>
+        <span className="mt-1 max-w-md text-sm text-ink/60">
+          For the clearest result, fill the frame and use a background that contrasts with the
+          garment.
         </span>
         <input
           className="sr-only"
@@ -92,6 +135,7 @@ export function UploadForm() {
           accept="image/*"
           multiple
           disabled={loading}
+          aria-describedby="photo-requirements"
           onChange={chooseFiles}
         />
       </label>
@@ -144,13 +188,22 @@ export function UploadForm() {
         }}
       />
 
-      {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {notice && (
+        <p className="mt-4 rounded-xl bg-citrus/30 px-4 py-3 text-sm text-ink" role="status">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
       <Button className="mt-6 w-full" type="submit" disabled={loading} size="lg">
         {loading && <LoaderCircle className="animate-spin" size={17} />}
         {loading ? "Adding to wardrobe…" : "Add to wardrobe"}
       </Button>
       {loading && (
-        <p className="mt-3 text-center text-sm text-ink/60">
+        <p className="mt-3 text-center text-sm text-ink/60" role="status" aria-live="polite">
           Your photos are being optimized and saved. Please keep this page open.
         </p>
       )}
