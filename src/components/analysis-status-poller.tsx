@@ -1,24 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  analysisStatusSnapshot,
+  reconcileTrackedAnalyses,
+  type AnalysisStatusItem,
+} from "@/features/wardrobe/domain/analysis-status";
 
-type StatusItem = { id: string; status: string; updatedAt: string };
+type AnalysisStatusContextValue = { trackAnalysis: (itemId: string) => void };
 
-function snapshot(items: StatusItem[]) {
-  return items
-    .map((item) => `${item.id}:${item.status}:${item.updatedAt}`)
-    .sort()
-    .join("|");
-}
+const AnalysisStatusContext = createContext<AnalysisStatusContextValue | null>(null);
 
-export function AnalysisStatusPoller() {
+export function AnalysisStatusProvider({
+  children,
+  enabled,
+}: {
+  children: React.ReactNode;
+  enabled: boolean;
+}) {
   const router = useRouter();
   const previousSnapshot = useRef<string | null>(null);
+  const trackedItemIds = useRef(new Set<string>());
   const requestInFlight = useRef(false);
   const timeout = useRef<number | null>(null);
+  const [wakeGeneration, setWakeGeneration] = useState(0);
+
+  const trackAnalysis = useCallback(
+    (itemId: string) => {
+      if (!enabled) return;
+      trackedItemIds.current.add(itemId);
+      setWakeGeneration((generation) => generation + 1);
+    },
+    [enabled],
+  );
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
 
     function schedule(delay: number) {
@@ -40,9 +58,15 @@ export function AnalysisStatusPoller() {
           schedule(15000);
           return;
         }
-        const { items } = (await response.json()) as { items: StatusItem[] };
-        const nextSnapshot = snapshot(items);
-        if (previousSnapshot.current !== null && previousSnapshot.current !== nextSnapshot)
+        const { items } = (await response.json()) as { items: AnalysisStatusItem[] };
+        if (cancelled) return;
+        const nextSnapshot = analysisStatusSnapshot(items);
+        const reconciliation = reconcileTrackedAnalyses(trackedItemIds.current, items);
+        trackedItemIds.current = reconciliation.trackedItemIds;
+        if (
+          reconciliation.completedItemIds.length > 0 ||
+          (previousSnapshot.current !== null && previousSnapshot.current !== nextSnapshot)
+        )
           router.refresh();
         previousSnapshot.current = nextSnapshot;
         schedule(items.length ? 4000 : 30000);
@@ -66,7 +90,17 @@ export function AnalysisStatusPoller() {
       if (timeout.current !== null) window.clearTimeout(timeout.current);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [router]);
+  }, [enabled, router, wakeGeneration]);
 
-  return null;
+  return (
+    <AnalysisStatusContext.Provider value={{ trackAnalysis }}>
+      {children}
+    </AnalysisStatusContext.Provider>
+  );
+}
+
+export function useAnalysisStatus() {
+  const context = useContext(AnalysisStatusContext);
+  if (!context) throw new Error("useAnalysisStatus must be used inside AnalysisStatusProvider");
+  return context;
 }

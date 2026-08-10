@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Camera, FileImage, Images, ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
+import { useAnalysisStatus } from "@/components/analysis-status-poller";
 import {
   canPreviewPhoto,
   isSupportedPhoto,
@@ -22,6 +23,7 @@ type UploadResponse = {
 
 export function UploadForm() {
   const router = useRouter();
+  const { trackAnalysis } = useAnalysisStatus();
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -140,6 +142,7 @@ export function UploadForm() {
         setLoading(false);
         return setError("The upload finished unexpectedly. Please try again.");
       }
+      trackAnalysis(payload.itemId);
       router.push(`/items/${payload.itemId}`);
       router.refresh();
     } catch {
