@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Bookmark, LoaderCircle, Sparkles } from "lucide-react";
+import { Bookmark, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Item = { id: string; name: string; category: string | null };
@@ -15,6 +15,11 @@ type Result = {
 };
 const fieldClassName =
   "mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15";
+const promptExamples = [
+  "A relaxed dinner in town",
+  "Something comfortable for a warm afternoon",
+  "A put-together outfit for a casual weekend",
+];
 
 function Recommendation({
   content,
@@ -130,8 +135,8 @@ export function OutfitDesk({ items }: { items: Item[] }) {
       <section className="rounded-3xl border border-line bg-mist/60 p-5 sm:p-8">
         {result ? (
           <>
-            <div className="flex items-center gap-2 font-mono text-xs font-bold tracking-[0.13em] text-berry">
-              <Sparkles size={16} /> FROM YOUR WARDROBE
+            <div className="font-mono text-xs font-bold tracking-[0.13em] text-berry">
+              FROM YOUR WARDROBE
             </div>
             <div className="prose prose-sm mt-6 max-w-none text-ink prose-headings:font-display prose-p:leading-7 prose-li:my-2">
               <Recommendation
@@ -148,13 +153,25 @@ export function OutfitDesk({ items }: { items: Item[] }) {
           </>
         ) : (
           <div className="flex min-h-72 flex-col justify-center">
-            <span className="w-fit rounded-2xl bg-citrus p-3 text-berry">
-              <Sparkles size={22} />
-            </span>
-            <h2 className="mt-5 text-2xl font-bold tracking-[-0.04em]">What are you wearing?</h2>
-            <p className="mt-2 max-w-md text-ink/65">
-              Share the occasion, your mood, or a piece you want to wear. We’ll take it from there.
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-teal">
+              Not sure where to start?
             </p>
+            <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em]">Try an example</h2>
+            <p className="mt-2 max-w-md text-ink/65">
+              Pick a starting point, then change as much of it as you like.
+            </p>
+            <div className="mt-6 grid gap-2.5">
+              {promptExamples.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setPrompt(example)}
+                  className="rounded-xl border border-line bg-canvas px-4 py-3 text-left text-sm font-semibold transition hover:-translate-y-0.5 hover:border-teal hover:bg-citrus/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </section>

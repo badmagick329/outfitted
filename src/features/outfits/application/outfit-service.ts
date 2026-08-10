@@ -18,7 +18,7 @@ export class OutfitService {
       : undefined;
     const result = await this.ai.suggest(
       selected
-        ? `${input.prompt}\nThe user explicitly wants to use: ${selected.name}.`
+        ? `${input.prompt}\nThe chosen outfit must include wardrobe item ${selected.id}, named ${selected.name}.`
         : input.prompt,
       items.map(
         ({

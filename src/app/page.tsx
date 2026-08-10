@@ -1,6 +1,16 @@
-import { getCurrentAccess } from "@/features/access/server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { LandingPage } from "@/components/landing-page";
+import { getCurrentAccess } from "@/features/access/server";
+
+export const metadata: Metadata = {
+  title: "Outfitted — open your wardrobe from anywhere",
+  description:
+    "Photograph, organise and browse your clothes in a private visual catalogue, with outfit help when you want it.",
+};
+
 export default async function Home() {
   const access = await getCurrentAccess();
-  redirect(!access ? "/login" : access.accessStatus === "active" ? "/wardrobe" : "/access");
+  if (access) redirect(access.accessStatus === "active" ? "/wardrobe" : "/access");
+  return <LandingPage />;
 }
