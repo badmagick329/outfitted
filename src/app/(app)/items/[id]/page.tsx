@@ -24,14 +24,20 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
       <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div>
           <WardrobeBackLink />
-          {item.name && <h1 className="mt-5 max-w-4xl text-4xl font-bold tracking-[-0.05em] sm:text-5xl">{item.name}</h1>}
-          {["complete", "failed", "pending", "processing"].includes(item.analysisStatus) && <p className="mt-3 text-ink/65">
-            {item.analysisStatus === "complete"
-              ? "AI details can be refined below."
-              : item.analysisStatus === "failed"
-                ? "Analysis needs another try."
-                : "We’re reading the details in the background."}
-          </p>}
+          {item.name && (
+            <h1 className="mt-5 max-w-4xl text-4xl font-bold tracking-[-0.05em] sm:text-5xl">
+              {item.name}
+            </h1>
+          )}
+          {["complete", "failed", "pending", "processing"].includes(item.analysisStatus) && (
+            <p className="mt-3 text-ink/65">
+              {item.analysisStatus === "complete"
+                ? "AI details can be refined below."
+                : item.analysisStatus === "failed"
+                  ? "Analysis needs another try."
+                  : "We’re reading the details in the background."}
+            </p>
+          )}
         </div>
         {["failed", "pending", "processing"].includes(item.analysisStatus) && (
           <span
