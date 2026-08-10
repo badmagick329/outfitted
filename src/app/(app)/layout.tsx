@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AnalysisStatusPoller } from "@/components/analysis-status-poller";
+import { AnalysisStatusProvider } from "@/components/analysis-status-poller";
 import { MemberNavigation } from "@/components/member-navigation";
 import { getCurrentAccess } from "@/features/access/server";
 
@@ -9,16 +9,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (access.accessStatus !== "active") redirect("/access");
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-      {access.canUseAi && <AnalysisStatusPoller />}
-      <MemberNavigation
-        canUseAi={access.canUseAi}
-        isAdmin={access.isAdmin}
-        name={access.name}
-        email={access.email}
-      />
-      <section className="mx-auto w-full max-w-7xl px-5 pb-28 pt-9 sm:px-8 lg:px-12 lg:py-12">
-        {children}
-      </section>
+      <AnalysisStatusProvider enabled={access.canUseAi}>
+        <MemberNavigation
+          canUseAi={access.canUseAi}
+          isAdmin={access.isAdmin}
+          name={access.name}
+          email={access.email}
+        />
+        <section className="mx-auto w-full max-w-7xl px-5 pb-28 pt-9 sm:px-8 lg:px-12 lg:py-12">
+          {children}
+        </section>
+      </AnalysisStatusProvider>
     </div>
   );
 }

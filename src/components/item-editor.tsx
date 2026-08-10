@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, ChevronDown, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAnalysisStatus } from "@/components/analysis-status-poller";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,6 +89,7 @@ async function messageFrom(response: Response, fallback: string) {
 
 export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }) {
   const router = useRouter();
+  const { trackAnalysis } = useAnalysisStatus();
   const initialDetails = editableDetails(item);
   const [data, setData] = useState(initialDetails);
   const [savedData, setSavedData] = useState(initialDetails);
@@ -118,6 +120,10 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
     setSavedData(nextDetails);
     lastItemVersion.current = item.updatedAt;
   }, [item, savedData]);
+
+  useEffect(() => {
+    if (isAnalyzing) trackAnalysis(item.id);
+  }, [isAnalyzing, item.id, trackAnalysis]);
 
   function setText(key: TextDetail, value: string) {
     setNotice("");
@@ -165,6 +171,7 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
         setError(await messageFrom(response, "Couldn’t start reading this garment."));
         return;
       }
+      trackAnalysis(item.id);
       setNotice("Garment analysis started.");
       router.refresh();
     } catch {
