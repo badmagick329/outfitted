@@ -9,8 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{js,mjs,cjs,ts,json,css}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{js,mjs,cjs,ts,json,css}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{js,mjs,cjs,ts,json,css}\" \".github/**/*.{yml,yaml}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{js,mjs,cjs,ts,json,css}\" \".github/**/*.{yml,yaml}\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "worker": "bun run src/worker.ts"
