@@ -1,5 +1,8 @@
 import OpenAI from "openai";
 import { z } from "zod";
+import type { AiCallResult } from "@/features/ai-usage/domain/contracts";
+
+export const AI_MODEL = "gpt-5.6-luna";
 
 export const analysisSchema = z.object({
   name: z.string().max(160),
@@ -24,8 +27,9 @@ export const outfitSuggestionSchema = z.object({
 });
 export type OutfitSuggestion = z.infer<typeof outfitSuggestionSchema>;
 export interface AiWardrobeProvider {
-  analyze(images: string[]): Promise<WardrobeAnalysis>;
-  suggest(prompt: string, wardrobe: unknown[]): Promise<OutfitSuggestion>;
+  readonly model: string;
+  analyze(images: string[]): Promise<AiCallResult<WardrobeAnalysis>>;
+  suggest(prompt: string, wardrobe: unknown[]): Promise<AiCallResult<OutfitSuggestion>>;
 }
 
 export function buildOutfitSuggestionPrompt(prompt: string, wardrobe: unknown[]) {
@@ -43,12 +47,14 @@ You may recommend only items in AVAILABLE WARDROBE ITEMS. Write recommendation a
 }
 
 class OpenAiWardrobeProvider implements AiWardrobeProvider {
+  readonly model = AI_MODEL;
+
   private get client() {
     return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
   async analyze(images: string[]) {
     const response = await this.client.responses.parse({
-      model: "gpt-5.6-luna",
+      model: this.model,
       input: [
         {
           role: "user",
@@ -74,11 +80,21 @@ class OpenAiWardrobeProvider implements AiWardrobeProvider {
         },
       },
     });
-    return analysisSchema.parse(JSON.parse(response.output_text));
+    return {
+      data: analysisSchema.parse(JSON.parse(response.output_text)),
+      model: this.model,
+      providerRequestId: response.id,
+      usage: {
+        inputTokens: response.usage?.input_tokens ?? 0,
+        cachedInputTokens: response.usage?.input_tokens_details.cached_tokens ?? 0,
+        cacheWriteInputTokens: response.usage?.input_tokens_details.cache_write_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+      },
+    };
   }
   async suggest(prompt: string, wardrobe: unknown[]) {
     const response = await this.client.responses.parse({
-      model: "gpt-5.6-luna",
+      model: this.model,
       input: buildOutfitSuggestionPrompt(prompt, wardrobe),
       text: {
         format: {
@@ -89,7 +105,17 @@ class OpenAiWardrobeProvider implements AiWardrobeProvider {
         },
       },
     });
-    return outfitSuggestionSchema.parse(JSON.parse(response.output_text));
+    return {
+      data: outfitSuggestionSchema.parse(JSON.parse(response.output_text)),
+      model: this.model,
+      providerRequestId: response.id,
+      usage: {
+        inputTokens: response.usage?.input_tokens ?? 0,
+        cachedInputTokens: response.usage?.input_tokens_details.cached_tokens ?? 0,
+        cacheWriteInputTokens: response.usage?.input_tokens_details.cache_write_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+      },
+    };
   }
 }
 export const ai: AiWardrobeProvider = new OpenAiWardrobeProvider();

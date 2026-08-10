@@ -1,4 +1,5 @@
 import { ai } from "@/lib/ai";
+import { aiUsageRecorder } from "@/features/ai-usage/server";
 import { enqueueAnalysis } from "@/lib/jobs";
 import { storage } from "@/lib/storage";
 import { WardrobeService } from "./application/wardrobe-service";
@@ -9,4 +10,5 @@ export const wardrobeService = new WardrobeService({
   storage,
   jobs: { enqueueAnalysis },
   ai,
+  usageRecorder: aiUsageRecorder,
 });
