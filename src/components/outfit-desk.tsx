@@ -4,8 +4,19 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import { Bookmark, LoaderCircle, Shirt, Trash2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Bookmark,
+  Check,
+  LoaderCircle,
+  Pencil,
+  Shirt,
+  Trash2,
+  X,
+} from "lucide-react";
+import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
 import { Button } from "@/components/ui/button";
+import { replaceOutfitRecommendationItem } from "@/features/outfits/domain/outfit-edit";
 
 type Item = {
   id: string;
@@ -53,12 +64,18 @@ async function messageFrom(response: Response, fallback: string) {
   return payload?.error?.message ?? fallback;
 }
 
+function itemLabel(item: Item) {
+  return item.name || item.category || "Untitled garment";
+}
+
 function Recommendation({
   content,
   referencedItemIds,
+  linkItems = true,
 }: {
   content: string;
   referencedItemIds: string[];
+  linkItems?: boolean;
 }) {
   const allowedItemIds = new Set(referencedItemIds);
   return (
@@ -68,7 +85,8 @@ function Recommendation({
       components={{
         a({ href, children }) {
           const itemId = href?.startsWith("item:") ? href.slice(5) : "";
-          return allowedItemIds.has(itemId) ? (
+          if (!allowedItemIds.has(itemId)) return <>{children}</>;
+          return linkItems ? (
             <Link
               className="font-bold text-berry underline decoration-citrus decoration-2 underline-offset-4 hover:text-teal"
               href={`/items/${itemId}`}
@@ -76,7 +94,7 @@ function Recommendation({
               {children}
             </Link>
           ) : (
-            <>{children}</>
+            <strong>{children}</strong>
           );
         },
       }}
@@ -87,6 +105,7 @@ function Recommendation({
 }
 
 function OutfitGarments({ itemIds, items }: { itemIds: string[]; items: Item[] }) {
+  const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
   const itemById = new Map(items.map((item) => [item.id, item]));
   const outfitItems = itemIds.flatMap((id) => {
     const item = itemById.get(id);
@@ -94,48 +113,317 @@ function OutfitGarments({ itemIds, items }: { itemIds: string[]; items: Item[] }
   });
 
   if (!outfitItems.length) return null;
+  const viewerImages: ViewerImage[] = outfitItems.flatMap((item) =>
+    item.coverPhotoId
+      ? [
+          {
+            src: `/api/photos/${item.coverPhotoId}`,
+            alt: itemLabel(item),
+            label: itemLabel(item),
+          },
+        ]
+      : [],
+  );
 
   return (
-    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      {outfitItems.map((item) => {
-        const accessibleName = item.name || item.category || "garment";
-        const hasVisibleDetails = Boolean(item.name || item.category);
-        return (
-          <Link
-            href={`/items/${item.id}`}
+    <>
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {outfitItems.map((item, index) => {
+          const accessibleName = itemLabel(item);
+          const hasVisibleDetails = Boolean(item.name || item.category);
+          const viewerIndex = outfitItems
+            .slice(0, index)
+            .filter((entry) => entry.coverPhotoId).length;
+          return (
+            <article
+              key={item.id}
+              className="overflow-hidden rounded-xl border border-line bg-canvas"
+            >
+              {item.coverPhotoId ? (
+                <button
+                  type="button"
+                  className="group block w-full overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-berry"
+                  onClick={() => setSelectedPreview(viewerIndex)}
+                  aria-label={`View larger photo of ${accessibleName}`}
+                >
+                  <img
+                    src={`/api/photos/${item.coverPhotoId}`}
+                    alt={accessibleName}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[4/5] w-full bg-mist object-cover transition duration-300 group-hover:scale-[1.02]"
+                  />
+                </button>
+              ) : (
+                <div className="grid aspect-[4/5] place-items-center bg-mist text-teal/45">
+                  <Shirt size={28} aria-hidden="true" />
+                </div>
+              )}
+              {hasVisibleDetails && (
+                <div className="border-t border-line px-3 py-2.5">
+                  {item.name && (
+                    <strong className="block break-words text-sm leading-tight">{item.name}</strong>
+                  )}
+                  {item.category && (
+                    <span className={`${item.name ? "mt-1" : ""} block text-xs text-ink/55`}>
+                      {item.category}
+                    </span>
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+      <ImageViewerDialog
+        images={viewerImages}
+        activeIndex={selectedPreview ?? 0}
+        onActiveIndexChange={setSelectedPreview}
+        open={selectedPreview !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPreview(null);
+        }}
+      />
+    </>
+  );
+}
+
+function EditableOutfitGarments({
+  itemIds,
+  items,
+  disabled,
+  onSwapRequest,
+}: {
+  itemIds: string[];
+  items: Item[];
+  disabled: boolean;
+  onSwapRequest: (itemId: string) => void;
+}) {
+  const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const outfitItems = itemIds.flatMap((id) => {
+    const item = itemById.get(id);
+    return item ? [item] : [];
+  });
+  const hasAlternatives = items.some((item) => !itemIds.includes(item.id));
+  const viewerImages: ViewerImage[] = outfitItems.flatMap((item) =>
+    item.coverPhotoId
+      ? [
+          {
+            src: `/api/photos/${item.coverPhotoId}`,
+            alt: itemLabel(item),
+            label: itemLabel(item),
+          },
+        ]
+      : [],
+  );
+
+  return (
+    <>
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {outfitItems.map((item, index) => {
+          const accessibleName = itemLabel(item);
+          const viewerIndex = outfitItems
+            .slice(0, index)
+            .filter((entry) => entry.coverPhotoId).length;
+          return (
+            <article
+              key={item.id}
+              className="flex h-full flex-col overflow-hidden rounded-xl border border-line bg-canvas"
+            >
+              {item.coverPhotoId ? (
+                <button
+                  type="button"
+                  className="group block w-full overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-berry"
+                  onClick={() => setSelectedPreview(viewerIndex)}
+                  aria-label={`View larger photo of ${accessibleName}`}
+                >
+                  <img
+                    src={`/api/photos/${item.coverPhotoId}`}
+                    alt={accessibleName}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[4/5] w-full bg-mist object-cover transition duration-300 group-hover:scale-[1.02]"
+                  />
+                </button>
+              ) : (
+                <div className="grid aspect-[4/5] place-items-center bg-mist text-teal/45">
+                  <Shirt size={28} aria-hidden="true" />
+                </div>
+              )}
+              <div className="flex-1 border-t border-line px-3 py-2.5">
+                <strong className="block break-words text-sm leading-tight">
+                  {accessibleName}
+                </strong>
+                {item.name && item.category && (
+                  <span className="mt-1 block text-xs text-ink/55">{item.category}</span>
+                )}
+              </div>
+              {hasAlternatives && (
+                <div className="mt-auto border-t border-line p-2">
+                  <Button
+                    className="w-full"
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => onSwapRequest(item.id)}
+                  >
+                    <ArrowLeftRight size={14} aria-hidden="true" />
+                    Swap
+                  </Button>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+      <ImageViewerDialog
+        images={viewerImages}
+        activeIndex={selectedPreview ?? 0}
+        onActiveIndexChange={setSelectedPreview}
+        open={selectedPreview !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPreview(null);
+        }}
+      />
+    </>
+  );
+}
+
+function GarmentSwapPanel({
+  currentItemId,
+  itemIds,
+  items,
+  disabled,
+  onCancel,
+  onSelect,
+}: {
+  currentItemId: string;
+  itemIds: string[];
+  items: Item[];
+  disabled: boolean;
+  onCancel: () => void;
+  onSelect: (itemId: string) => void;
+}) {
+  const currentItem = items.find((item) => item.id === currentItemId);
+  const alternatives = items.filter((item) => !itemIds.includes(item.id));
+
+  return (
+    <section className="mt-4 rounded-2xl border border-teal/25 bg-canvas p-4" aria-live="polite">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold">
+            Swap {currentItem ? itemLabel(currentItem) : "this garment"}
+          </h3>
+          <p className="mt-1 text-xs text-ink/55">Choose another piece from your wardrobe.</p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          aria-label="Close garment choices"
+        >
+          <X size={15} aria-hidden="true" />
+          Close
+        </Button>
+      </div>
+      <div className="mt-4 grid max-h-[min(24rem,60vh)] grid-cols-2 gap-3 overflow-y-auto overscroll-contain rounded-xl border border-line/70 bg-mist/35 p-2 sm:grid-cols-3 lg:grid-cols-4">
+        {alternatives.map((item) => (
+          <button
             key={item.id}
-            aria-label={`Open ${accessibleName}`}
-            className="group overflow-hidden rounded-xl border border-line bg-canvas transition hover:-translate-y-0.5 hover:border-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(item.id)}
+            className="overflow-hidden rounded-xl border border-line bg-mist text-left transition hover:-translate-y-0.5 hover:border-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry disabled:pointer-events-none disabled:opacity-50"
           >
             {item.coverPhotoId ? (
               <img
                 src={`/api/photos/${item.coverPhotoId}`}
-                alt={item.name || item.category || "Garment in this outfit"}
+                alt=""
                 loading="lazy"
                 decoding="async"
-                className="aspect-[4/5] w-full bg-mist object-cover transition duration-300 group-hover:scale-[1.02]"
+                className="aspect-square w-full object-cover"
               />
             ) : (
-              <div className="grid aspect-[4/5] place-items-center bg-mist text-teal/45">
-                <Shirt size={28} aria-hidden="true" />
+              <div className="grid aspect-square place-items-center text-teal/45">
+                <Shirt size={24} aria-hidden="true" />
               </div>
             )}
-            {hasVisibleDetails && (
-              <div className="border-t border-line px-3 py-2.5">
-                {item.name && (
-                  <strong className="block break-words text-sm leading-tight">{item.name}</strong>
-                )}
-                {item.category && (
-                  <span className={`${item.name ? "mt-1" : ""} block text-xs text-ink/55`}>
-                    {item.category}
-                  </span>
-                )}
-              </div>
+            <span className="block break-words border-t border-line bg-canvas px-3 py-2 text-xs font-bold">
+              {itemLabel(item)}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EditableOutfitExplanation({
+  recommendation,
+  rationale,
+  referencedItemIds,
+  editing,
+  disabled,
+  onChange,
+  onEditingChange,
+}: {
+  recommendation: string;
+  rationale: string | null;
+  referencedItemIds: string[];
+  editing: boolean;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onEditingChange: (editing: boolean) => void;
+}) {
+  return (
+    <>
+      <div className="prose prose-sm mt-6 max-w-none text-ink prose-headings:font-display prose-p:leading-7 prose-li:my-2">
+        <Recommendation
+          content={recommendation}
+          referencedItemIds={referencedItemIds}
+          linkItems={false}
+        />
+      </div>
+      <div className="mt-6 border-t border-line pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Why this works</h3>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={() => onEditingChange(!editing)}
+          >
+            {editing ? (
+              <Check size={14} aria-hidden="true" />
+            ) : (
+              <Pencil size={14} aria-hidden="true" />
             )}
-          </Link>
-        );
-      })}
-    </div>
+            {editing ? "Done" : "Edit why"}
+          </Button>
+        </div>
+        {editing ? (
+          <label className="mt-3 block">
+            <span className="sr-only">Why this outfit works</span>
+            <textarea
+              className={fieldClassName}
+              value={rationale ?? ""}
+              onChange={(event) => onChange(event.target.value)}
+              rows={4}
+              maxLength={3000}
+              disabled={disabled}
+            />
+          </label>
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-ink/65">
+            {rationale || "No explanation added."}
+          </p>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -177,16 +465,21 @@ export function OutfitDesk({
   const [promptNotice, setPromptNotice] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [result, setResult] = useState<Result | null>(null);
+  const [resultName, setResultName] = useState("");
   const [savedOutfits, setSavedOutfits] = useState(initialSavedOutfits);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [swappingItemId, setSwappingItemId] = useState<string | null>(null);
+  const [editingRationale, setEditingRationale] = useState(false);
+  const [editNotice, setEditNotice] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   async function ask(event: React.FormEvent) {
     event.preventDefault();
+    const submittedPrompt = prompt.trim();
     setLoading(true);
     setSaved(false);
     setError("");
@@ -194,7 +487,10 @@ export function OutfitDesk({
       const response = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, selectedItemId: selectedItemId || undefined }),
+        body: JSON.stringify({
+          prompt: submittedPrompt,
+          selectedItemId: selectedItemId || undefined,
+        }),
       });
       if (!response.ok) {
         setError(await messageFrom(response, "Couldn’t create an outfit."));
@@ -202,7 +498,11 @@ export function OutfitDesk({
       }
       const payload = (await response.json()) as Result;
       setResult(payload);
+      setResultName(submittedPrompt.slice(0, 80));
       setSaved(savedOutfits.some((outfit) => outfit.suggestionId === payload.id));
+      setSwappingItemId(null);
+      setEditingRationale(false);
+      setEditNotice("");
     } catch {
       setError("Couldn’t create an outfit. Check your connection and try again.");
     } finally {
@@ -212,13 +512,20 @@ export function OutfitDesk({
 
   async function save() {
     if (!result || saved || saving) return;
+    const savedRationale = result.rationale?.trim() || null;
     setSaving(true);
     setError("");
     try {
       const response = await fetch("/api/saved-outfits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ suggestionId: result.id, name: prompt.slice(0, 80) }),
+        body: JSON.stringify({
+          suggestionId: result.id,
+          name: resultName,
+          recommendation: result.recommendation,
+          rationale: savedRationale,
+          referencedItemIds: result.referencedItemIds,
+        }),
       });
       if (!response.ok) {
         setError(await messageFrom(response, "Couldn’t save this outfit."));
@@ -229,20 +536,48 @@ export function OutfitDesk({
         {
           id: payload.id,
           suggestionId: result.id,
-          name: prompt.slice(0, 80),
+          name: resultName,
           createdAt: payload.createdAt,
           recommendation: result.recommendation,
-          rationale: result.rationale,
+          rationale: savedRationale,
           referencedItemIds: result.referencedItemIds,
         },
         ...current.filter((outfit) => outfit.suggestionId !== result.id),
       ]);
       setSaved(true);
+      setSwappingItemId(null);
+      setEditingRationale(false);
+      setEditNotice("Outfit saved with your changes.");
     } catch {
       setError("Couldn’t save this outfit. Check your connection and try again.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function swapGarment(replacementItemId: string) {
+    if (!result || !swappingItemId || saving || saved) return;
+    const replacement = items.find((item) => item.id === replacementItemId);
+    if (!replacement) return;
+    setResult((current) =>
+      current
+        ? {
+            ...current,
+            recommendation: replaceOutfitRecommendationItem(
+              current.recommendation,
+              swappingItemId,
+              replacement.id,
+              itemLabel(replacement),
+            ),
+            referencedItemIds: current.referencedItemIds.map((itemId) =>
+              itemId === swappingItemId ? replacementItemId : itemId,
+            ),
+          }
+        : current,
+    );
+    setSwappingItemId(null);
+    setEditingRationale(true);
+    setEditNotice(`${itemLabel(replacement)} added. Review why the updated outfit works.`);
   }
 
   async function removeSaved(outfitId: string) {
@@ -335,12 +670,52 @@ export function OutfitDesk({
                   FROM YOUR WARDROBE
                 </div>
                 <h2 className="mt-2 text-2xl font-bold tracking-[-0.04em]">Your outfit</h2>
-                <OutfitGarments itemIds={result.referencedItemIds} items={items} />
-                <OutfitExplanation
-                  recommendation={result.recommendation}
-                  rationale={result.rationale}
-                  referencedItemIds={result.referencedItemIds}
-                />
+                {saved ? (
+                  <OutfitGarments itemIds={result.referencedItemIds} items={items} />
+                ) : (
+                  <EditableOutfitGarments
+                    itemIds={result.referencedItemIds}
+                    items={items}
+                    disabled={saving}
+                    onSwapRequest={(itemId) => {
+                      setSwappingItemId(itemId);
+                      setEditNotice("");
+                    }}
+                  />
+                )}
+                {!saved && swappingItemId && (
+                  <GarmentSwapPanel
+                    currentItemId={swappingItemId}
+                    itemIds={result.referencedItemIds}
+                    items={items}
+                    disabled={saving}
+                    onCancel={() => setSwappingItemId(null)}
+                    onSelect={swapGarment}
+                  />
+                )}
+                <p className="sr-only" role="status" aria-live="polite">
+                  {editNotice}
+                </p>
+                {saved ? (
+                  <OutfitExplanation
+                    recommendation={result.recommendation}
+                    rationale={result.rationale}
+                    referencedItemIds={result.referencedItemIds}
+                  />
+                ) : (
+                  <EditableOutfitExplanation
+                    recommendation={result.recommendation}
+                    rationale={result.rationale}
+                    referencedItemIds={result.referencedItemIds}
+                    editing={editingRationale}
+                    disabled={saving}
+                    onEditingChange={setEditingRationale}
+                    onChange={(rationale) => {
+                      setResult((current) => (current ? { ...current, rationale } : current));
+                      setEditNotice("");
+                    }}
+                  />
+                )}
                 <Button
                   className="mt-4"
                   variant="ghost"

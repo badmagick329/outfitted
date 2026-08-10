@@ -8,7 +8,19 @@ export const createOutfitSuggestionSchema = z
   .strict();
 
 export const saveOutfitSchema = z
-  .object({ suggestionId: z.string().uuid(), name: z.string().trim().min(1).max(160) })
+  .object({
+    suggestionId: z.string().uuid(),
+    name: z.string().trim().min(1).max(160),
+    recommendation: z.string().trim().min(1).max(5000),
+    rationale: z.string().trim().max(3000).nullable(),
+    referencedItemIds: z
+      .array(z.string().uuid())
+      .min(1)
+      .max(20)
+      .refine((itemIds) => new Set(itemIds).size === itemIds.length, {
+        message: "Each garment can appear only once.",
+      }),
+  })
   .strict();
 
 export const savedOutfitIdSchema = z.string().uuid();

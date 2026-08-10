@@ -14,8 +14,8 @@ The application and worker run directly through Bun for fast local reloads. Dock
 
 ## Commands
 
-- `docker compose up -d` / `docker compose down` — manage local PostgreSQL
-- `bun run db:generate` — create a migration after schema changes
-- `bun run db:migrate` — apply committed migrations
-- `bun run worker` — run the asynchronous AI processor
-- `bun run lint` / `bun run build` — validate the app
+- `docker compose up -d` / `docker compose down`: manage local PostgreSQL
+- `bun run db:generate`: create a migration after schema changes
+- `bun run db:migrate`: apply committed migrations
+- `bun run worker`: run the asynchronous AI processor
+- `bun run lint` / `bun run build`: validate the app

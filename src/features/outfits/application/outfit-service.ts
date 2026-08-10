@@ -1,4 +1,4 @@
-import { notFound } from "@/shared/application-error";
+import { conflict, notFound } from "@/shared/application-error";
 import type { CreateOutfitSuggestionInput, SaveOutfitInput } from "../domain/contracts";
 import type { OutfitAi } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
@@ -67,6 +67,16 @@ export class OutfitService {
       throw notFound("Outfit suggestion not found");
     const existing = await this.repository.findSaved(ownerId, input.suggestionId);
     if (existing) return existing;
+    const activeItemIds = new Set(
+      (await this.repository.listActiveWardrobe(ownerId)).map((item) => item.id),
+    );
+    if (input.referencedItemIds.some((itemId) => !activeItemIds.has(itemId)))
+      throw conflict("One or more garments in this outfit are no longer available.");
+    await this.repository.updateSuggestion(ownerId, input.suggestionId, {
+      selectedItemIds: input.referencedItemIds,
+      recommendation: input.recommendation,
+      rationale: input.rationale,
+    });
     return this.repository.save(ownerId, input.suggestionId, input.name);
   }
 

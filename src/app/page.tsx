@@ -4,7 +4,7 @@ import { LandingPage } from "@/components/landing-page";
 import { getCurrentAccess } from "@/features/access/server";
 
 export const metadata: Metadata = {
-  title: "Outfitted — open your wardrobe from anywhere",
+  title: "Outfitted - Open your wardrobe from anywhere",
   description:
     "Photograph, organise and browse your clothes in a private visual catalogue, with outfit help when you want it.",
 };
