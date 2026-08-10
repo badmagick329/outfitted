@@ -7,6 +7,7 @@ import { Camera, FileImage, Images, ImagePlus, LoaderCircle, X } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
 import { useAnalysisStatus } from "@/components/analysis-status-poller";
+import { useUploadDraft } from "@/components/upload-draft-provider";
 import {
   canPreviewPhoto,
   isSupportedPhoto,
@@ -24,12 +25,14 @@ type UploadResponse = {
 export function UploadForm() {
   const router = useRouter();
   const { trackAnalysis } = useAnalysisStatus();
-  const [files, setFiles] = useState<File[]>([]);
+  const { files, setFiles, clearFiles } = useUploadDraft();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [previews, setPreviews] = useState<Array<string | null>>([]);
+  const [previews, setPreviews] = useState<Array<string | null>>(() =>
+    files.map((file) => (canPreviewPhoto(file) ? URL.createObjectURL(file) : null)),
+  );
   const previewsRef = useRef(previews);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
@@ -143,6 +146,7 @@ export function UploadForm() {
         return setError("The upload finished unexpectedly. Please try again.");
       }
       trackAnalysis(payload.itemId);
+      clearFiles();
       router.push(`/items/${payload.itemId}`);
       router.refresh();
     } catch {
