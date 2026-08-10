@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileImage, ImagePlus, LoaderCircle, X } from "lucide-react";
+import { Camera, FileImage, Images, ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
 import {
@@ -29,6 +29,8 @@ export function UploadForm() {
   const [dragging, setDragging] = useState(false);
   const [previews, setPreviews] = useState<Array<string | null>>([]);
   const previewsRef = useRef(previews);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
   const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
 
   const previewImages: ViewerImage[] = previews.flatMap((src, index) =>
@@ -56,7 +58,7 @@ export function UploadForm() {
     [],
   );
 
-  function selectFiles(selectedFiles: File[]) {
+  function addFiles(selectedFiles: File[]) {
     if (!selectedFiles.length) return;
     const unsupported = selectedFiles.find((file) => !isSupportedPhoto(file));
     if (unsupported) {
@@ -72,33 +74,38 @@ export function UploadForm() {
       return;
     }
 
-    const nextFiles = selectedFiles.slice(0, maxPhotos);
-    setPreviews((current) => {
-      current.forEach((preview) => {
-        if (preview) URL.revokeObjectURL(preview);
-      });
-      return nextFiles.map((file) => (canPreviewPhoto(file) ? URL.createObjectURL(file) : null));
-    });
-    setFiles(nextFiles);
+    const availableSlots = maxPhotos - files.length;
+    if (availableSlots <= 0) {
+      setError("");
+      setNotice("You already have six photos selected. Remove one to add another.");
+      return;
+    }
+
+    const nextFiles = selectedFiles.slice(0, availableSlots);
+    setPreviews((current) => [
+      ...current,
+      ...nextFiles.map((file) => (canPreviewPhoto(file) ? URL.createObjectURL(file) : null)),
+    ]);
+    setFiles((current) => [...current, ...nextFiles]);
     setSelectedPreview(null);
     setError("");
     setNotice(
-      selectedFiles.length > maxPhotos
-        ? "You can upload up to six photos. We kept the first six you selected."
+      selectedFiles.length > availableSlots
+        ? "You can upload up to six photos. Extra photos were left out."
         : "",
     );
   }
 
   function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) {
-    selectFiles(Array.from(event.target.files ?? []));
+    addFiles(Array.from(event.target.files ?? []));
     event.target.value = "";
   }
 
-  function dropFiles(event: React.DragEvent<HTMLLabelElement>) {
+  function dropFiles(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragging(false);
     if (loading) return;
-    selectFiles(Array.from(event.dataTransfer.files));
+    addFiles(Array.from(event.dataTransfer.files));
   }
 
   function removeFile(index: number) {
@@ -147,8 +154,8 @@ export function UploadForm() {
       onSubmit={upload}
       aria-busy={loading}
     >
-      <label
-        className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 ${loading ? "pointer-events-none border-line bg-mist opacity-70" : dragging ? "border-berry bg-peach/60 shadow-[inset_0_0_0_2px_var(--color-berry)]" : "border-teal/50 bg-mist/50 hover:border-berry hover:bg-peach/40"}`}
+      <div
+        className={`flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${loading ? "pointer-events-none border-line bg-mist opacity-70" : dragging ? "border-berry bg-peach/60 shadow-[inset_0_0_0_2px_var(--color-berry)]" : "border-teal/50 bg-mist/50"}`}
         onDragEnter={(event) => {
           event.preventDefault();
           if (!loading) setDragging(true);
@@ -165,19 +172,57 @@ export function UploadForm() {
             ? `${files.length} ${files.length === 1 ? "photo" : "photos"} selected`
             : dragging
               ? "Drop your photos here"
-              : "Choose or drop garment photos"}
+              : "Add garment photos"}
         </strong>
         <span id="photo-requirements" className="mt-2 text-sm text-ink/60">
           {files.length
-            ? "Choose or drop again to replace this selection"
-            : "JPG, PNG, HEIC or WebP · up to 12MB each"}
+            ? files.length === maxPhotos
+              ? "Six-photo limit reached"
+              : `Add up to ${maxPhotos - files.length} more`
+            : "Take a photo, choose from your library, or drop files here"}
         </span>
         <span className="mt-1 max-w-md text-sm text-ink/60">
           For the clearest result, fill the frame and use a background that contrasts with the
           garment.
         </span>
+        <div className="mt-6 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
+          <Button
+            className="flex-1"
+            type="button"
+            variant="secondary"
+            disabled={loading || files.length >= maxPhotos}
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera size={17} aria-hidden="true" />
+            {files.length ? "Take another photo" : "Take a photo"}
+          </Button>
+          <Button
+            className="flex-1"
+            type="button"
+            variant="outline"
+            disabled={loading || files.length >= maxPhotos}
+            onClick={() => libraryInputRef.current?.click()}
+          >
+            <Images size={17} aria-hidden="true" />
+            {files.length ? "Choose more photos" : "Choose photos"}
+          </Button>
+        </div>
+        <span className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/50">
+          JPG, PNG, HEIC or WebP · up to 12MB each
+        </span>
         <input
-          className="sr-only"
+          ref={cameraInputRef}
+          hidden
+          type="file"
+          accept={photoInputAccept}
+          capture="environment"
+          disabled={loading}
+          aria-describedby="photo-requirements"
+          onChange={chooseFiles}
+        />
+        <input
+          ref={libraryInputRef}
+          hidden
           type="file"
           accept={photoInputAccept}
           multiple
@@ -185,7 +230,7 @@ export function UploadForm() {
           aria-describedby="photo-requirements"
           onChange={chooseFiles}
         />
-      </label>
+      </div>
 
       {files.length > 0 && (
         <div
