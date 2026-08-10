@@ -1,4 +1,5 @@
 import { AdminUserManager } from "@/components/admin-user-manager";
+import { AdminSectionNavigation } from "@/components/admin-section-navigation";
 import { MemberPageHeader } from "@/components/member-page-header";
 import {
   listAccessAuditEvents,
@@ -38,6 +39,7 @@ export default async function AdminUsersPage() {
         description={<p>Manage access and available features.</p>}
         tone="peach"
       />
+      <AdminSectionNavigation active="users" />
       <AdminUserManager
         users={sortedUsers.map(({ createdAt, ...user }) => ({
           ...user,

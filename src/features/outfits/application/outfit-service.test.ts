@@ -15,6 +15,20 @@ const item = {
   formality: null,
 };
 
+function aiResult<T>(data: T) {
+  return {
+    data,
+    model: "test-model",
+    providerRequestId: "response-1",
+    usage: {
+      inputTokens: 100,
+      cachedInputTokens: 0,
+      cacheWriteInputTokens: 0,
+      outputTokens: 20,
+    },
+  };
+}
+
 describe("OutfitService.create", () => {
   it("filters AI references to the owner’s active wardrobe", async () => {
     const repository = {
@@ -22,11 +36,13 @@ describe("OutfitService.create", () => {
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
-      suggest: vi.fn().mockResolvedValue({
-        recommendation: "Try the shirt",
-        rationale: "A good match",
-        referencedItemIds: ["item-1", "other-user-item"],
-      }),
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Try the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1", "other-user-item"],
+        }),
+      ),
     };
     const service = new OutfitService(repository, ai);
 
@@ -44,11 +60,13 @@ describe("OutfitService.create", () => {
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
-      suggest: vi.fn().mockResolvedValue({
-        recommendation: "Try the shirt",
-        rationale: "A good match",
-        referencedItemIds: ["item-1"],
-      }),
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Try the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1"],
+        }),
+      ),
     };
     const service = new OutfitService(repository, ai);
 

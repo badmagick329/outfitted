@@ -1,12 +1,14 @@
 import { conflict, notFound } from "@/shared/application-error";
+import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
 import type { CreateOutfitSuggestionInput, SaveOutfitInput } from "../domain/contracts";
-import type { OutfitAi } from "../domain/ports";
+import type { OutfitAi, OutfitAiUsageRecorder } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
 
 export class OutfitService {
   constructor(
     private readonly repository: OutfitRepository,
     private readonly ai: OutfitAi,
+    private readonly usageRecorder?: OutfitAiUsageRecorder,
   ) {}
 
   async create(ownerId: string, input: CreateOutfitSuggestionInput) {
@@ -16,36 +18,43 @@ export class OutfitService {
     const selected = input.selectedItemId
       ? items.find((item) => item.id === input.selectedItemId)
       : undefined;
-    const result = await this.ai.suggest(
-      selected
-        ? `${input.prompt}\nThe chosen outfit must include wardrobe item ${selected.id}, named ${selected.name}.`
-        : input.prompt,
-      items.map(
-        ({
-          id,
-          name,
-          description,
-          category,
-          primaryColor,
-          material,
-          fit,
-          styleTags,
-          seasons,
-          formality,
-        }) => ({
-          id,
-          name,
-          description,
-          category,
-          primaryColor,
-          material,
-          fit,
-          styleTags,
-          seasons,
-          formality,
-        }),
-      ),
-    );
+    const result = await trackAiCall({
+      recorder: this.usageRecorder,
+      userId: ownerId,
+      operation: "outfit_suggestion",
+      model: this.ai.model ?? "unknown",
+      call: () =>
+        this.ai.suggest(
+          selected
+            ? `${input.prompt}\nThe chosen outfit must include wardrobe item ${selected.id}, named ${selected.name}.`
+            : input.prompt,
+          items.map(
+            ({
+              id,
+              name,
+              description,
+              category,
+              primaryColor,
+              material,
+              fit,
+              styleTags,
+              seasons,
+              formality,
+            }) => ({
+              id,
+              name,
+              description,
+              category,
+              primaryColor,
+              material,
+              fit,
+              styleTags,
+              seasons,
+              formality,
+            }),
+          ),
+        ),
+    });
     const allowedIds = new Set(items.map((item) => item.id));
     const referencedItemIds = result.referencedItemIds.filter((id) => allowedIds.has(id));
     const suggestion = await this.repository.createSuggestion({

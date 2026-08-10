@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   jsonb,
   pgTable,
@@ -41,6 +42,32 @@ export const accessAuditEvents = pgTable("access_audit_events", {
   nextFeatureTier: varchar("next_feature_tier", { length: 16 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const aiUsageEvents = pgTable(
+  "ai_usage_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    operation: varchar("operation", { length: 32 }).notNull(),
+    model: varchar("model", { length: 64 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull(),
+    providerRequestId: text("provider_request_id"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    cacheWriteInputTokens: integer("cache_write_input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    estimatedCostMicrousd: integer("estimated_cost_microusd").notNull().default(0),
+    latencyMs: integer("latency_ms").notNull(),
+    pricingVersion: varchar("pricing_version", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("ai_usage_events_created_at_idx").on(table.createdAt),
+    index("ai_usage_events_user_created_at_idx").on(table.userId, table.createdAt),
+  ],
+);
 
 export const accounts = pgTable(
   "accounts",

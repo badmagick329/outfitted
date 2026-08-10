@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
 import {
   ApplicationError,
   conflict,
@@ -6,7 +7,12 @@ import {
   notFound,
 } from "@/shared/application-error";
 import type { UpdateWardrobeItemInput } from "../domain/contracts";
-import type { AnalysisJobQueue, WardrobeAi, WardrobeStorage } from "../domain/ports";
+import type {
+  AnalysisJobQueue,
+  WardrobeAi,
+  WardrobeAiUsageRecorder,
+  WardrobeStorage,
+} from "../domain/ports";
 import type { WardrobeRepository } from "../domain/repository";
 
 type Dependencies = {
@@ -14,6 +20,7 @@ type Dependencies = {
   storage: WardrobeStorage;
   jobs: AnalysisJobQueue;
   ai: WardrobeAi;
+  usageRecorder?: WardrobeAiUsageRecorder;
 };
 
 export class WardrobeService {
@@ -153,7 +160,13 @@ export class WardrobeService {
             `data:image/webp;base64,${(await this.dependencies.storage.read(photo.storageKey)).toString("base64")}`,
         ),
       );
-      const result = await this.dependencies.ai.analyze(images);
+      const result = await trackAiCall({
+        recorder: this.dependencies.usageRecorder,
+        userId: item.userId,
+        operation: "garment_analysis",
+        model: this.dependencies.ai.model ?? "unknown",
+        call: () => this.dependencies.ai.analyze(images),
+      });
       await this.dependencies.repository.completeAnalysis(
         itemId,
         result,
