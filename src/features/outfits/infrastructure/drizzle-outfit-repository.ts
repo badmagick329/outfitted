@@ -40,6 +40,26 @@ export class DrizzleOutfitRepository implements OutfitRepository {
     return suggestion ?? null;
   }
 
+  async updateSuggestion(
+    ownerId: string,
+    suggestionId: string,
+    input: {
+      selectedItemIds: string[];
+      recommendation: string;
+      rationale: string | null;
+    },
+  ) {
+    await db
+      .update(outfitSuggestions)
+      .set({
+        selectedItemIds: input.selectedItemIds,
+        recommendation: input.recommendation,
+        rationale: input.rationale,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(outfitSuggestions.id, suggestionId), eq(outfitSuggestions.userId, ownerId)));
+  }
+
   listSaved(ownerId: string) {
     return db
       .select({ saved: savedOutfits, suggestion: outfitSuggestions })

@@ -67,13 +67,70 @@ describe("OutfitService saved outfits", () => {
     const repository = {
       findSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
       findSaved: vi.fn().mockResolvedValue(existing),
+      updateSuggestion: vi.fn(),
       save: vi.fn(),
     } as unknown as OutfitRepository;
     const service = new OutfitService(repository, { suggest: vi.fn() });
 
     await expect(
-      service.save("user-1", { suggestionId: "suggestion-1", name: "Dinner" }),
+      service.save("user-1", {
+        suggestionId: "suggestion-1",
+        name: "Dinner",
+        recommendation: "Wear the teal shirt.",
+        rationale: "The colour works.",
+        referencedItemIds: ["item-1"],
+      }),
     ).resolves.toBe(existing);
+    expect(repository.updateSuggestion).not.toHaveBeenCalled();
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it("persists garment and explanation edits before saving", async () => {
+    const repository = {
+      findSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+      findSaved: vi.fn().mockResolvedValue(null),
+      listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      updateSuggestion: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn().mockResolvedValue({ id: "saved-1" }),
+    } as unknown as OutfitRepository;
+    const service = new OutfitService(repository, { suggest: vi.fn() });
+
+    await service.save("user-1", {
+      suggestionId: "suggestion-1",
+      name: "Dinner",
+      recommendation: "Wear the teal shirt.",
+      rationale: "The colour works.",
+      referencedItemIds: ["item-1"],
+    });
+
+    expect(repository.updateSuggestion).toHaveBeenCalledWith("user-1", "suggestion-1", {
+      selectedItemIds: ["item-1"],
+      recommendation: "Wear the teal shirt.",
+      rationale: "The colour works.",
+    });
+    expect(repository.save).toHaveBeenCalledWith("user-1", "suggestion-1", "Dinner");
+  });
+
+  it("rejects a swapped garment outside the active wardrobe", async () => {
+    const repository = {
+      findSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+      findSaved: vi.fn().mockResolvedValue(null),
+      listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      updateSuggestion: vi.fn(),
+      save: vi.fn(),
+    } as unknown as OutfitRepository;
+    const service = new OutfitService(repository, { suggest: vi.fn() });
+
+    await expect(
+      service.save("user-1", {
+        suggestionId: "suggestion-1",
+        name: "Dinner",
+        recommendation: "Wear another garment.",
+        rationale: null,
+        referencedItemIds: ["other-item"],
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(repository.updateSuggestion).not.toHaveBeenCalled();
     expect(repository.save).not.toHaveBeenCalled();
   });
 

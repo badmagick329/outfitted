@@ -15,7 +15,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Outfitted — your private wardrobe",
+  title: "Outfitted - Your private wardrobe",
   description: "A private, AI-assisted wardrobe inventory.",
 };
 

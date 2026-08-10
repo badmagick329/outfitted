@@ -18,6 +18,15 @@ export interface OutfitRepository {
     rationale: string;
   }): Promise<OutfitSuggestionRecord>;
   findSuggestion(ownerId: string, suggestionId: string): Promise<OutfitSuggestionRecord | null>;
+  updateSuggestion(
+    ownerId: string,
+    suggestionId: string,
+    input: {
+      selectedItemIds: string[];
+      recommendation: string;
+      rationale: string | null;
+    },
+  ): Promise<void>;
   listSaved(ownerId: string): Promise<SavedOutfitWithSuggestion[]>;
   findSaved(ownerId: string, suggestionId: string): Promise<SavedOutfit | null>;
   findSavedById(ownerId: string, savedOutfitId: string): Promise<SavedOutfit | null>;
