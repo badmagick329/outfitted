@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSupportedPhoto } from "./photo-files";
 
 export const wardrobeItemIdSchema = z.string().uuid();
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
@@ -9,8 +10,12 @@ export const uploadPhotosSchema = z
   .max(6, "Upload no more than six photos.")
   .superRefine((files, context) => {
     for (const [index, file] of files.entries()) {
-      if (!file.type.startsWith("image/"))
-        context.addIssue({ code: "custom", path: [index], message: "Each file must be an image." });
+      if (!isSupportedPhoto(file))
+        context.addIssue({
+          code: "custom",
+          path: [index],
+          message: "Choose JPG, PNG, HEIC, or WebP photos.",
+        });
       if (file.size > 12 * 1024 * 1024)
         context.addIssue({
           code: "custom",

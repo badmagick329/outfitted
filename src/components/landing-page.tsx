@@ -311,7 +311,7 @@ export function LandingPage() {
               <div className="flex items-center justify-between gap-4 border-b-2 border-teal/25 pb-5">
                 <div>
                   <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-berry">
-                    Outfit desk
+                    Outfit Desk
                   </p>
                   <h3 className="mt-1 text-xl font-bold tracking-[-0.03em]">
                     A relaxed Saturday in town

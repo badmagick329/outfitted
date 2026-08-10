@@ -60,3 +60,33 @@ describe("OutfitService.create", () => {
     );
   });
 });
+
+describe("OutfitService saved outfits", () => {
+  it("returns an existing save instead of creating a duplicate", async () => {
+    const existing = { id: "saved-1", suggestionId: "suggestion-1" };
+    const repository = {
+      findSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+      findSaved: vi.fn().mockResolvedValue(existing),
+      save: vi.fn(),
+    } as unknown as OutfitRepository;
+    const service = new OutfitService(repository, { suggest: vi.fn() });
+
+    await expect(
+      service.save("user-1", { suggestionId: "suggestion-1", name: "Dinner" }),
+    ).resolves.toBe(existing);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it("does not remove a saved outfit owned by someone else", async () => {
+    const repository = {
+      findSavedById: vi.fn().mockResolvedValue(null),
+      deleteSaved: vi.fn(),
+    } as unknown as OutfitRepository;
+    const service = new OutfitService(repository, { suggest: vi.fn() });
+
+    await expect(service.removeSaved("user-1", "saved-1")).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(repository.deleteSaved).not.toHaveBeenCalled();
+  });
+});

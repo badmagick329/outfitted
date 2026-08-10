@@ -17,8 +17,8 @@ export interface WardrobeRepository {
   findOwned(ownerId: string, itemId: string): Promise<WardrobeItem | null>;
   findById(itemId: string): Promise<WardrobeItem | null>;
   listActive(ownerId: string): Promise<WardrobeItem[]>;
-  listArchived(ownerId: string): Promise<WardrobeItem[]>;
   listActiveCards(ownerId: string): Promise<WardrobeCard[]>;
+  listArchivedCards(ownerId: string): Promise<WardrobeCard[]>;
   listOwnedPhotos(ownerId: string, itemId: string): Promise<WardrobePhoto[]>;
   findOwnedPhoto(ownerId: string, photoId: string): Promise<WardrobePhoto | null>;
   findOwnedPhotoByContentHash(ownerId: string, contentHash: string): Promise<WardrobePhoto | null>;

@@ -27,8 +27,8 @@ export class WardrobeService {
     return this.dependencies.repository.listActive(ownerId);
   }
 
-  listArchived(ownerId: string) {
-    return this.dependencies.repository.listArchived(ownerId);
+  listArchivedCards(ownerId: string) {
+    return this.dependencies.repository.listArchivedCards(ownerId);
   }
 
   listInProgress(ownerId: string) {

@@ -1,11 +1,16 @@
 /* eslint-disable @next/next/no-img-element -- local object URLs are required for pre-upload previews. */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, LoaderCircle, X } from "lucide-react";
+import { FileImage, ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
+import {
+  canPreviewPhoto,
+  isSupportedPhoto,
+  photoInputAccept,
+} from "@/features/wardrobe/domain/photo-files";
 
 const maxPhotos = 6;
 const maxPhotoSize = 12 * 1024 * 1024;
@@ -21,24 +26,41 @@ export function UploadForm() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [previews, setPreviews] = useState<Array<string | null>>([]);
+  const previewsRef = useRef(previews);
   const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
 
-  const previewImages: ViewerImage[] = previews.map((src, index) => ({
-    src,
-    alt: `Selected garment photo ${index + 1}`,
-    label: files[index]?.name,
-  }));
+  const previewImages: ViewerImage[] = previews.flatMap((src, index) =>
+    src
+      ? [
+          {
+            src,
+            alt: `Selected garment photo ${index + 1}`,
+            label: files[index]?.name,
+          },
+        ]
+      : [],
+  );
 
-  useEffect(() => () => previews.forEach(URL.revokeObjectURL), [previews]);
+  useEffect(() => {
+    previewsRef.current = previews;
+  }, [previews]);
 
-  function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) {
-    const selectedFiles = Array.from(event.target.files ?? []);
-    event.target.value = "";
+  useEffect(
+    () => () => {
+      previewsRef.current.forEach((preview) => {
+        if (preview) URL.revokeObjectURL(preview);
+      });
+    },
+    [],
+  );
 
-    const nonImage = selectedFiles.find((file) => !file.type.startsWith("image/"));
-    if (nonImage) {
-      setError(`${nonImage.name} isn’t an image. Choose JPG, PNG, HEIC, or WebP files.`);
+  function selectFiles(selectedFiles: File[]) {
+    if (!selectedFiles.length) return;
+    const unsupported = selectedFiles.find((file) => !isSupportedPhoto(file));
+    if (unsupported) {
+      setError(`${unsupported.name} isn’t supported. Choose JPG, PNG, HEIC, or WebP photos.`);
       setNotice("");
       return;
     }
@@ -52,8 +74,10 @@ export function UploadForm() {
 
     const nextFiles = selectedFiles.slice(0, maxPhotos);
     setPreviews((current) => {
-      current.forEach(URL.revokeObjectURL);
-      return nextFiles.map((file) => URL.createObjectURL(file));
+      current.forEach((preview) => {
+        if (preview) URL.revokeObjectURL(preview);
+      });
+      return nextFiles.map((file) => (canPreviewPhoto(file) ? URL.createObjectURL(file) : null));
     });
     setFiles(nextFiles);
     setSelectedPreview(null);
@@ -65,10 +89,22 @@ export function UploadForm() {
     );
   }
 
+  function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) {
+    selectFiles(Array.from(event.target.files ?? []));
+    event.target.value = "";
+  }
+
+  function dropFiles(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setDragging(false);
+    if (loading) return;
+    selectFiles(Array.from(event.dataTransfer.files));
+  }
+
   function removeFile(index: number) {
     setFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
     setPreviews((current) => {
-      URL.revokeObjectURL(current[index]);
+      if (current[index]) URL.revokeObjectURL(current[index]);
       return current.filter((_, currentIndex) => currentIndex !== index);
     });
     setSelectedPreview(null);
@@ -112,17 +148,28 @@ export function UploadForm() {
       aria-busy={loading}
     >
       <label
-        className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 ${loading ? "pointer-events-none border-line bg-mist opacity-70" : "border-teal/50 bg-mist/50 hover:border-berry hover:bg-peach/40"}`}
+        className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 ${loading ? "pointer-events-none border-line bg-mist opacity-70" : dragging ? "border-berry bg-peach/60 shadow-[inset_0_0_0_2px_var(--color-berry)]" : "border-teal/50 bg-mist/50 hover:border-berry hover:bg-peach/40"}`}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (!loading) setDragging(true);
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
+        }}
+        onDrop={dropFiles}
       >
-        <ImagePlus size={32} className="text-berry" />
+        <ImagePlus size={32} className="text-berry" aria-hidden="true" />
         <strong className="mt-4 text-lg">
           {files.length
             ? `${files.length} ${files.length === 1 ? "photo" : "photos"} selected`
-            : "Choose garment photos"}
+            : dragging
+              ? "Drop your photos here"
+              : "Choose or drop garment photos"}
         </strong>
         <span id="photo-requirements" className="mt-2 text-sm text-ink/60">
           {files.length
-            ? "Choose again to replace this selection"
+            ? "Choose or drop again to replace this selection"
             : "JPG, PNG, HEIC or WebP · up to 12MB each"}
         </span>
         <span className="mt-1 max-w-md text-sm text-ink/60">
@@ -132,7 +179,7 @@ export function UploadForm() {
         <input
           className="sr-only"
           type="file"
-          accept="image/*"
+          accept={photoInputAccept}
           multiple
           disabled={loading}
           aria-describedby="photo-requirements"
@@ -140,41 +187,55 @@ export function UploadForm() {
         />
       </label>
 
-      {previews.length > 0 && (
+      {files.length > 0 && (
         <div
           className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
           aria-label="Selected photo previews"
         >
-          {previews.map((preview, index) => (
-            <figure
-              key={preview}
-              className="relative overflow-hidden rounded-xl border border-line bg-mist"
-            >
-              <button
-                type="button"
-                className="group block w-full overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
-                onClick={() => setSelectedPreview(index)}
-                aria-label={`View larger selected garment photo ${index + 1}`}
+          {files.map((file, index) => {
+            const preview = previews[index];
+            const viewerIndex = previews.slice(0, index).filter(Boolean).length;
+
+            return (
+              <figure
+                key={`${file.name}-${file.lastModified}-${index}`}
+                className="relative overflow-hidden rounded-xl border border-line bg-mist"
               >
-                <img
-                  src={preview}
-                  alt={`Selected garment photo ${index + 1}`}
-                  className="aspect-square w-full object-cover transition duration-200 group-hover:scale-[1.03]"
-                />
-              </button>
-              <button
-                type="button"
-                className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-ink/80 text-canvas transition hover:bg-berry focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
-                onClick={() => removeFile(index)}
-                aria-label={`Remove ${files[index]?.name ?? `photo ${index + 1}`} from selection`}
-              >
-                <X size={14} />
-              </button>
-              <figcaption className="truncate px-2 py-2 font-mono text-[10px] text-ink/60">
-                {files[index]?.name}
-              </figcaption>
-            </figure>
-          ))}
+                {preview ? (
+                  <button
+                    type="button"
+                    className="group block w-full overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+                    onClick={() => setSelectedPreview(viewerIndex)}
+                    aria-label={`View larger selected garment photo ${index + 1}`}
+                  >
+                    <img
+                      src={preview}
+                      alt={`Selected garment photo ${index + 1}`}
+                      className="aspect-square w-full object-cover transition duration-200 group-hover:scale-[1.03]"
+                    />
+                  </button>
+                ) : (
+                  <div className="grid aspect-square place-items-center px-3 text-center text-ink/55">
+                    <div>
+                      <FileImage className="mx-auto text-teal" size={26} aria-hidden="true" />
+                      <span className="mt-2 block text-xs">Preview unavailable</span>
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-ink/80 text-canvas transition hover:bg-berry focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
+                  onClick={() => removeFile(index)}
+                  aria-label={`Remove ${files[index]?.name ?? `photo ${index + 1}`} from selection`}
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+                <figcaption className="truncate px-2 py-2 font-mono text-[10px] text-ink/60">
+                  {file.name}
+                </figcaption>
+              </figure>
+            );
+          })}
         </div>
       )}
 
@@ -199,7 +260,7 @@ export function UploadForm() {
         </p>
       )}
       <Button className="mt-6 w-full" type="submit" disabled={loading} size="lg">
-        {loading && <LoaderCircle className="animate-spin" size={17} />}
+        {loading && <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />}
         {loading ? "Adding to wardrobe…" : "Add to wardrobe"}
       </Button>
       {loading && (

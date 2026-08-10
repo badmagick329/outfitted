@@ -33,7 +33,20 @@ export function ImageViewerDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/75 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-4 z-50 grid place-items-center outline-none sm:inset-8">
+        <Dialog.Content
+          className="fixed inset-4 z-50 grid place-items-center outline-none sm:inset-8"
+          onKeyDown={(event) => {
+            if (!hasMultipleImages) return;
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              previous();
+            }
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              next();
+            }
+          }}
+        >
           <Dialog.Title className="sr-only">Garment photo viewer</Dialog.Title>
           <Dialog.Description className="sr-only">{activeImage.alt}</Dialog.Description>
           <div className="relative flex max-h-full w-full max-w-6xl flex-col items-center justify-center">
@@ -43,7 +56,7 @@ export function ImageViewerDialog({
                 className="absolute right-0 top-0 z-10 grid size-10 place-items-center rounded-full bg-ink/75 text-canvas transition hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-citrus"
                 aria-label="Close image viewer"
               >
-                <X size={19} />
+                <X size={19} aria-hidden="true" />
               </button>
             </Dialog.Close>
             <img
@@ -69,7 +82,7 @@ export function ImageViewerDialog({
                   onClick={previous}
                   aria-label="Previous photo"
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={20} aria-hidden="true" />
                 </Button>
                 <Button
                   type="button"
@@ -79,7 +92,7 @@ export function ImageViewerDialog({
                   onClick={next}
                   aria-label="Next photo"
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={20} aria-hidden="true" />
                 </Button>
                 <div className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1">
                   {images.map((image, index) => (
@@ -89,6 +102,7 @@ export function ImageViewerDialog({
                       onClick={() => onActiveIndexChange(index)}
                       className={`shrink-0 overflow-hidden rounded-lg border-2 ${index === activeIndex ? "border-citrus" : "border-transparent opacity-65 hover:opacity-100"}`}
                       aria-label={`View photo ${index + 1}`}
+                      aria-current={index === activeIndex ? "true" : undefined}
                     >
                       <img src={image.src} alt="" className="size-12 object-cover" />
                     </button>

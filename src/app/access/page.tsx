@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Clock3, ShieldOff } from "lucide-react";
-import { SignOutButton } from "@/components/sign-out-button";
+import { AccessStatusActions } from "@/components/access-status-actions";
+import { BrandWordmark } from "@/components/brand";
 import { getCurrentAccess } from "@/features/access/server";
 
 export default async function AccessPage() {
@@ -9,24 +10,34 @@ export default async function AccessPage() {
   if (access.accessStatus === "active") redirect("/wardrobe");
   const disabled = access.accessStatus === "disabled";
   return (
-    <main className="grid min-h-screen place-items-center bg-canvas px-5 py-10 text-ink">
-      <section className="w-full max-w-lg rounded-[2rem] border border-line bg-mist p-8 shadow-[9px_9px_0_var(--color-peach)] sm:p-11">
-        <span className="inline-flex rounded-2xl bg-berry p-3 text-citrus">
-          {disabled ? <ShieldOff size={23} /> : <Clock3 size={23} />}
-        </span>
-        <h1 className="mt-6 text-4xl font-bold tracking-[-0.06em]">
-          {disabled ? "Access is paused" : "You’re registered"}
-        </h1>
-        <p className="mt-4 text-lg leading-7 text-ink/65">
-          {disabled
-            ? "Your access has been paused. Your wardrobe is safely retained; contact the app administrator if you think this is a mistake."
-            : "Thanks for joining. An administrator will review your access before your private wardrobe is available."}
-        </p>
-        <p className="mt-8 text-sm text-ink/60">Sign in again later to check your status.</p>
-        <div className="mt-7">
-          <SignOutButton />
-        </div>
-      </section>
+    <main className="min-h-screen bg-canvas px-5 py-8 text-ink sm:px-8 sm:py-10">
+      <div className="mx-auto flex w-full max-w-5xl flex-col">
+        <BrandWordmark />
+        <section className="mt-16 w-full max-w-xl self-center rounded-[2rem] border border-line bg-mist p-8 shadow-[9px_9px_0_var(--color-peach)] sm:p-11">
+          <span className="inline-flex rounded-2xl bg-berry p-3 text-citrus">
+            {disabled ? (
+              <ShieldOff size={23} aria-hidden="true" />
+            ) : (
+              <Clock3 size={23} aria-hidden="true" />
+            )}
+          </span>
+          <h1 className="mt-6 text-4xl font-bold tracking-[-0.06em]">
+            {disabled ? "Access is paused" : "Access request received"}
+          </h1>
+          <p className="mt-4 text-lg leading-7 text-ink/65">
+            {disabled
+              ? "Your access has been paused. Your wardrobe is safely retained; contact the app administrator if you think this is a mistake."
+              : "An administrator will review your request. We’ll open your private wardrobe as soon as it is approved."}
+          </p>
+          <div className="mt-7 rounded-2xl border border-teal/15 bg-canvas/70 px-4 py-3">
+            <span className="block font-mono text-[10px] font-bold uppercase tracking-wide text-teal">
+              Signed in as
+            </span>
+            <strong className="mt-1 block break-all text-sm">{access.email}</strong>
+          </div>
+          <AccessStatusActions checkAutomatically={!disabled} />
+        </section>
+      </div>
     </main>
   );
 }
