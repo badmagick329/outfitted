@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Plus } from "lucide-react";
 import { ItemEditor } from "@/components/item-editor";
 import { GarmentPhotoGallery } from "@/components/garment-photo-gallery";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { MemberStatusBadge, type MemberStatus } from "@/components/member-status-badge";
+import { buttonVariants } from "@/components/ui/button";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { requireActiveUser } from "@/features/access/server";
 import { wardrobeService } from "@/features/wardrobe/server";
@@ -37,10 +40,16 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
             </p>
           ) : undefined
         }
-        status={
-          ["failed", "pending", "processing"].includes(item.analysisStatus) ? (
-            <MemberStatusBadge status={item.analysisStatus as MemberStatus} />
-          ) : undefined
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {["failed", "pending", "processing"].includes(item.analysisStatus) && (
+              <MemberStatusBadge status={item.analysisStatus as MemberStatus} />
+            )}
+            <Link href="/upload" className={buttonVariants()}>
+              <Plus size={17} aria-hidden="true" />
+              Add another garment
+            </Link>
+          </div>
         }
       />
       <div className="mt-9 grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(30rem,0.9fr)]">
