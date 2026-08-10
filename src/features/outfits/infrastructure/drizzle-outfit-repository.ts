@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { outfitSuggestions, savedOutfits, wardrobeItems } from "@/lib/db/schema";
 import type { OutfitRepository } from "../domain/repository";
@@ -40,11 +40,44 @@ export class DrizzleOutfitRepository implements OutfitRepository {
     return suggestion ?? null;
   }
 
+  listSaved(ownerId: string) {
+    return db
+      .select({ saved: savedOutfits, suggestion: outfitSuggestions })
+      .from(savedOutfits)
+      .innerJoin(outfitSuggestions, eq(savedOutfits.suggestionId, outfitSuggestions.id))
+      .where(eq(savedOutfits.userId, ownerId))
+      .orderBy(desc(savedOutfits.createdAt));
+  }
+
+  async findSaved(ownerId: string, suggestionId: string) {
+    const [saved] = await db
+      .select()
+      .from(savedOutfits)
+      .where(and(eq(savedOutfits.userId, ownerId), eq(savedOutfits.suggestionId, suggestionId)))
+      .limit(1);
+    return saved ?? null;
+  }
+
+  async findSavedById(ownerId: string, savedOutfitId: string) {
+    const [saved] = await db
+      .select()
+      .from(savedOutfits)
+      .where(and(eq(savedOutfits.userId, ownerId), eq(savedOutfits.id, savedOutfitId)))
+      .limit(1);
+    return saved ?? null;
+  }
+
   async save(ownerId: string, suggestionId: string, name: string) {
     const [saved] = await db
       .insert(savedOutfits)
       .values({ userId: ownerId, suggestionId, name })
       .returning();
     return saved;
+  }
+
+  async deleteSaved(ownerId: string, savedOutfitId: string) {
+    await db
+      .delete(savedOutfits)
+      .where(and(eq(savedOutfits.userId, ownerId), eq(savedOutfits.id, savedOutfitId)));
   }
 }

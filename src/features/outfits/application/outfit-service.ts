@@ -58,9 +58,21 @@ export class OutfitService {
     return { ...suggestion, referencedItemIds };
   }
 
+  listSaved(ownerId: string) {
+    return this.repository.listSaved(ownerId);
+  }
+
   async save(ownerId: string, input: SaveOutfitInput) {
     if (!(await this.repository.findSuggestion(ownerId, input.suggestionId)))
       throw notFound("Outfit suggestion not found");
+    const existing = await this.repository.findSaved(ownerId, input.suggestionId);
+    if (existing) return existing;
     return this.repository.save(ownerId, input.suggestionId, input.name);
+  }
+
+  async removeSaved(ownerId: string, savedOutfitId: string) {
+    if (!(await this.repository.findSavedById(ownerId, savedOutfitId)))
+      throw notFound("Saved outfit not found");
+    await this.repository.deleteSaved(ownerId, savedOutfitId);
   }
 }

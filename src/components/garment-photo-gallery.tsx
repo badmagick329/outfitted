@@ -12,10 +12,11 @@ type GarmentPhotoGalleryProps = {
 
 export function GarmentPhotoGallery({ itemName, photos }: GarmentPhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const displayName = itemName || "Untitled garment";
   const images: ViewerImage[] = photos.map((photo, index) => ({
     src: photo.src,
-    alt: `${itemName}, photo ${index + 1}`,
-    label: `${itemName} · photo ${index + 1}`,
+    alt: `${displayName}, photo ${index + 1}`,
+    label: `${displayName} · photo ${index + 1}`,
   }));
 
   return (
@@ -32,10 +33,12 @@ export function GarmentPhotoGallery({ itemName, photos }: GarmentPhotoGalleryPro
             <img
               src={image.src}
               alt={image.alt}
+              loading={index === 0 ? "eager" : "lazy"}
+              decoding="async"
               className={`w-full object-cover transition duration-300 group-hover:scale-[1.02] ${index === 0 ? "aspect-[4/5] max-h-[46rem]" : "aspect-square"}`}
             />
             <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-ink/75 px-3 py-1.5 text-xs font-bold text-canvas opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
-              <Expand size={14} /> View
+              <Expand size={14} aria-hidden="true" /> View
             </span>
           </button>
         ))}

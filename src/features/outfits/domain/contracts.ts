@@ -11,5 +11,7 @@ export const saveOutfitSchema = z
   .object({ suggestionId: z.string().uuid(), name: z.string().trim().min(1).max(160) })
   .strict();
 
+export const savedOutfitIdSchema = z.string().uuid();
+
 export type CreateOutfitSuggestionInput = z.infer<typeof createOutfitSuggestionSchema>;
 export type SaveOutfitInput = z.infer<typeof saveOutfitSchema>;

@@ -57,12 +57,17 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
       .orderBy(desc(wardrobeItems.createdAt));
   }
 
-  listArchived(ownerId: string) {
-    return db
-      .select()
+  async listArchivedCards(ownerId: string): Promise<WardrobeCard[]> {
+    const rows = await db
+      .select({ item: wardrobeItems, coverPhotoId: itemPhotos.id })
       .from(wardrobeItems)
+      .leftJoin(
+        itemPhotos,
+        and(eq(itemPhotos.itemId, wardrobeItems.id), eq(itemPhotos.position, 0)),
+      )
       .where(and(eq(wardrobeItems.userId, ownerId), isNotNull(wardrobeItems.archivedAt)))
       .orderBy(desc(wardrobeItems.archivedAt));
+    return rows.map(({ item, coverPhotoId }) => ({ ...item, coverPhotoId }));
   }
 
   async listActiveCards(ownerId: string): Promise<WardrobeCard[]> {
