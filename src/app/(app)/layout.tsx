@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Archive, CircleUserRound, ShieldCheck, Shirt, Sparkles } from "lucide-react";
 import { AnalysisStatusPoller } from "@/components/analysis-status-poller";
+import { BrandMark } from "@/components/brand";
 import { MobileNav } from "@/components/mobile-nav";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getCurrentAccess } from "@/features/access/server";
@@ -16,10 +17,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <MobileNav canUseAi={access.canUseAi} isAdmin={access.isAdmin} />
       <aside className="sticky top-0 z-10 flex h-auto items-center justify-between border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur lg:h-screen lg:flex-col lg:items-stretch lg:justify-start lg:border-r lg:border-b-0 lg:px-5 lg:py-6">
         <Link href="/wardrobe" className="flex items-center gap-2 font-bold tracking-[-0.06em]">
-          <span className="grid size-8 place-items-center rounded-lg bg-berry text-canvas shadow-[3px_3px_0_#d9f35a]">
-            <Sparkles size={16} />
-          </span>
-          <span className="text-lg">outfitted</span>
+          <BrandMark className="size-8" />
+          <span className="text-lg">Outfitted</span>
         </Link>
         <nav className="hidden gap-1 lg:mt-14 lg:grid">
           <Link

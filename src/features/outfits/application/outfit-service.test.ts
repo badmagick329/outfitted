@@ -37,4 +37,26 @@ describe("OutfitService.create", () => {
       expect.objectContaining({ selectedItemIds: ["item-1"] }),
     );
   });
+
+  it("identifies a garment the user requires by both ID and name", async () => {
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue({
+        recommendation: "Try the shirt",
+        rationale: "A good match",
+        referencedItemIds: ["item-1"],
+      }),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await service.create("user-1", { prompt: "A dinner", selectedItemId: "item-1" });
+
+    expect(ai.suggest).toHaveBeenCalledWith(
+      expect.stringContaining("must include wardrobe item item-1, named Teal shirt"),
+      expect.any(Array),
+    );
+  });
 });
