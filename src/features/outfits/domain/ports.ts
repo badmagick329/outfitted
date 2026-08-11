@@ -8,6 +8,7 @@ export type OutfitAi = {
     prompt: string,
     wardrobe: unknown[],
     styleProfile?: StyleProfile | null,
+    excludedOutfitItemIds?: string[][],
   ): Promise<AiCallResult<OutfitSuggestion>>;
 };
 export type OutfitAiUsageRecorder = AiUsageRecorder;

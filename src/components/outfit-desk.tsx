@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   Bookmark,
   Check,
+  EyeOff,
   LoaderCircle,
   Pencil,
   Shirt,
@@ -471,12 +472,14 @@ export function OutfitDesk({
   const [savedOutfits, setSavedOutfits] = useState(initialSavedOutfits);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [ignoring, setIgnoring] = useState(false);
   const [saved, setSaved] = useState(false);
   const [swappingItemId, setSwappingItemId] = useState<string | null>(null);
   const [editingRationale, setEditingRationale] = useState(false);
   const [editNotice, setEditNotice] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   async function ask(event: React.FormEvent) {
@@ -484,6 +487,7 @@ export function OutfitDesk({
     const submittedPrompt = prompt.trim();
     setLoading(true);
     setSaved(false);
+    setNotice("");
     setError("");
     try {
       const response = await fetch("/api/suggestions", {
@@ -513,7 +517,7 @@ export function OutfitDesk({
   }
 
   async function save() {
-    if (!result || saved || saving) return;
+    if (!result || saved || saving || ignoring) return;
     const savedRationale = result.rationale?.trim() || null;
     setSaving(true);
     setError("");
@@ -557,8 +561,41 @@ export function OutfitDesk({
     }
   }
 
+  async function ignore() {
+    if (!result || saved || saving || ignoring) return;
+    setIgnoring(true);
+    setNotice("");
+    setError("");
+    try {
+      const response = await fetch("/api/ignored-outfits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          suggestionId: result.id,
+          recommendation: result.recommendation,
+          rationale: result.rationale?.trim() || null,
+          referencedItemIds: result.referencedItemIds,
+        }),
+      });
+      if (!response.ok) {
+        setError(await messageFrom(response, "Couldn’t ignore this outfit."));
+        return;
+      }
+      setResult(null);
+      setResultName("");
+      setSwappingItemId(null);
+      setEditingRationale(false);
+      setEditNotice("");
+      setNotice("Outfit ignored. This garment combination won’t be suggested again.");
+    } catch {
+      setError("Couldn’t ignore this outfit. Check your connection and try again.");
+    } finally {
+      setIgnoring(false);
+    }
+  }
+
   function swapGarment(replacementItemId: string) {
-    if (!result || !swappingItemId || saving || saved) return;
+    if (!result || !swappingItemId || saving || ignoring || saved) return;
     const replacement = items.find((item) => item.id === replacementItemId);
     if (!replacement) return;
     setResult((current) =>
@@ -612,6 +649,14 @@ export function OutfitDesk({
       {error && (
         <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p
+          role="status"
+          className="mt-6 rounded-xl border border-teal/15 bg-mist px-4 py-3 text-sm text-ink/70"
+        >
+          {notice}
         </p>
       )}
       {items.length ? (
@@ -703,7 +748,7 @@ export function OutfitDesk({
                   <EditableOutfitGarments
                     itemIds={result.referencedItemIds}
                     items={items}
-                    disabled={saving}
+                    disabled={saving || ignoring}
                     onSwapRequest={(itemId) => {
                       setSwappingItemId(itemId);
                       setEditNotice("");
@@ -715,7 +760,7 @@ export function OutfitDesk({
                     currentItemId={swappingItemId}
                     itemIds={result.referencedItemIds}
                     items={items}
-                    disabled={saving}
+                    disabled={saving || ignoring}
                     onCancel={() => setSwappingItemId(null)}
                     onSelect={swapGarment}
                   />
@@ -735,7 +780,7 @@ export function OutfitDesk({
                     rationale={result.rationale}
                     referencedItemIds={result.referencedItemIds}
                     editing={editingRationale}
-                    disabled={saving}
+                    disabled={saving || ignoring}
                     onEditingChange={setEditingRationale}
                     onChange={(rationale) => {
                       setResult((current) => (current ? { ...current, rationale } : current));
@@ -743,20 +788,38 @@ export function OutfitDesk({
                     }}
                   />
                 )}
-                <Button
-                  className="mt-4"
-                  variant="ghost"
-                  size="sm"
-                  onClick={save}
-                  disabled={saving || saved}
-                >
-                  {saving ? (
-                    <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Bookmark size={15} aria-hidden="true" />
+                <div className="mt-4 flex flex-wrap items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={save}
+                    disabled={saving || ignoring || saved}
+                  >
+                    {saving ? (
+                      <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Bookmark size={15} aria-hidden="true" />
+                    )}
+                    {saving ? "Saving…" : saved ? "Saved" : "Save outfit"}
+                  </Button>
+                  {!saved && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={ignore}
+                      disabled={saving || ignoring}
+                    >
+                      {ignoring ? (
+                        <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
+                      ) : (
+                        <EyeOff size={15} aria-hidden="true" />
+                      )}
+                      {ignoring ? "Ignoring…" : "Ignore outfit"}
+                    </Button>
                   )}
-                  {saving ? "Saving…" : saved ? "Saved" : "Save outfit"}
-                </Button>
+                </div>
               </>
             ) : (
               <div className="flex min-h-72 flex-col justify-center">

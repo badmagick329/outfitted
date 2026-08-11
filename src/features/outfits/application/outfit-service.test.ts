@@ -7,12 +7,16 @@ const item = {
   name: "Teal shirt",
   description: null,
   category: "shirt",
+  categoryGroup: "tops" as const,
   primaryColor: "teal",
+  secondaryColors: ["navy"],
   material: null,
   fit: null,
   styleTags: [],
   seasons: [],
   formality: null,
+  confidence: [],
+  analysisStatus: "complete",
 };
 
 function aiResult<T>(data: T) {
@@ -33,6 +37,7 @@ describe("OutfitService.create", () => {
   it("filters AI references to the owner’s active wardrobe", async () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -57,6 +62,7 @@ describe("OutfitService.create", () => {
   it("identifies a garment the user requires by both ID and name", async () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -76,12 +82,14 @@ describe("OutfitService.create", () => {
       expect.stringContaining("must include wardrobe item item-1, named Teal shirt"),
       expect.any(Array),
       null,
+      [],
     );
   });
 
   it("passes the owner’s optional style profile to the AI", async () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -105,7 +113,81 @@ describe("OutfitService.create", () => {
     await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
 
     expect(styleProfiles.find).toHaveBeenCalledWith("user-1");
-    expect(ai.suggest).toHaveBeenCalledWith(expect.any(String), expect.any(Array), styleProfile);
+    expect(ai.suggest).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      styleProfile,
+      [],
+    );
+  });
+
+  it("passes complete garment context and saved or ignored combinations to the AI", async () => {
+    const excludedItemIds = [["older-item-1", "older-item-2"]];
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      listExcludedItemIds: vi.fn().mockResolvedValue(excludedItemIds),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Try the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1"],
+        }),
+      ),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
+
+    expect(ai.suggest).toHaveBeenCalledWith(
+      expect.any(String),
+      [
+        expect.objectContaining({
+          categoryGroup: "tops",
+          secondaryColors: ["navy"],
+          confidence: [],
+          analysisStatus: "complete",
+        }),
+      ],
+      null,
+      excludedItemIds,
+    );
+  });
+
+  it("retries once when the AI returns an excluded garment combination", async () => {
+    const secondItem = { ...item, id: "item-2", name: "Stone trousers" };
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item, secondItem]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([["item-1"]]),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi
+        .fn()
+        .mockResolvedValueOnce(
+          aiResult({
+            recommendation: "Try the shirt",
+            rationale: "A good match",
+            referencedItemIds: ["item-1"],
+          }),
+        )
+        .mockResolvedValueOnce(
+          aiResult({
+            recommendation: "Try the trousers",
+            rationale: "A different choice",
+            referencedItemIds: ["item-2"],
+          }),
+        ),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await expect(
+      service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
+    ).resolves.toMatchObject({ referencedItemIds: ["item-2"] });
+    expect(ai.suggest).toHaveBeenCalledTimes(2);
+    expect(ai.suggest.mock.calls[1]?.[0]).toContain("previous attempt repeated");
   });
 });
 
@@ -193,5 +275,36 @@ describe("OutfitService saved outfits", () => {
       status: 404,
     });
     expect(repository.deleteSaved).not.toHaveBeenCalled();
+  });
+
+  it("stores an ignored outfit as a canonical garment set", async () => {
+    const repository = {
+      findSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+      listActiveWardrobe: vi
+        .fn()
+        .mockResolvedValue([item, { ...item, id: "item-2", name: "Stone trousers" }]),
+      updateSuggestion: vi.fn().mockResolvedValue(undefined),
+      ignore: vi.fn().mockResolvedValue(undefined),
+    } as unknown as OutfitRepository;
+    const service = new OutfitService(repository, { suggest: vi.fn() });
+
+    await service.ignore("user-1", {
+      suggestionId: "suggestion-1",
+      recommendation: "Wear both garments.",
+      rationale: "They work together.",
+      referencedItemIds: ["item-2", "item-1"],
+    });
+
+    expect(repository.updateSuggestion).toHaveBeenCalledWith("user-1", "suggestion-1", {
+      selectedItemIds: ["item-1", "item-2"],
+      recommendation: "Wear both garments.",
+      rationale: "They work together.",
+    });
+    expect(repository.ignore).toHaveBeenCalledWith({
+      ownerId: "user-1",
+      suggestionId: "suggestion-1",
+      selectedItemIds: ["item-1", "item-2"],
+      itemSignature: "item-1:item-2",
+    });
   });
 });

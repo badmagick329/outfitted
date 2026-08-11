@@ -25,5 +25,8 @@ export const saveOutfitSchema = z
 
 export const savedOutfitIdSchema = z.string().uuid();
 
+export const ignoreOutfitSchema = saveOutfitSchema.omit({ name: true });
+
 export type CreateOutfitSuggestionInput = z.infer<typeof createOutfitSuggestionSchema>;
 export type SaveOutfitInput = z.infer<typeof saveOutfitSchema>;
+export type IgnoreOutfitInput = z.infer<typeof ignoreOutfitSchema>;

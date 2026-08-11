@@ -59,8 +59,11 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("one complete, coherent outfit");
     expect(prompt).toContain("Do not return a collection of merely relevant items");
     expect(prompt).toContain("referencedItemIds must contain every garment");
+    expect(prompt).toContain("identify the plausible candidates for each role");
+    expect(prompt).toContain("treat input order as arbitrary");
     expect(prompt).toContain("A relaxed Saturday");
     expect(prompt).not.toContain("USER STYLE PROFILE");
+    expect(prompt).not.toContain("OUTFITS ALREADY SAVED OR IGNORED");
   });
 
   it("includes optional style notes as soft preference data", () => {
@@ -75,6 +78,22 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("Relaxed tailoring");
     expect(prompt).toContain("soft preference data");
     expect(prompt).toContain("current request and any explicitly selected garment take priority");
+  });
+
+  it("excludes saved and ignored garment combinations by ID without banning individual items", () => {
+    const prompt = buildOutfitSuggestionPrompt(
+      "Dinner",
+      [
+        { id: "7c1bcc30-61e7-4b82-bb99-bd73f33d926d", name: "Teal shirt" },
+        { id: "f2644611-9961-49d0-bfc4-adac960ca7f0", name: "Stone trousers" },
+      ],
+      null,
+      [["7c1bcc30-61e7-4b82-bb99-bd73f33d926d", "f2644611-9961-49d0-bfc4-adac960ca7f0"]],
+    );
+
+    expect(prompt).toContain("OUTFITS ALREADY SAVED OR IGNORED");
+    expect(prompt).toContain("unordered set of garment IDs");
+    expect(prompt).toContain("Individual garments may still be used");
   });
 });
 
