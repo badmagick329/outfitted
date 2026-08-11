@@ -50,6 +50,13 @@
       "when": 1786456871462,
       "tag": "0006_striped_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786467707040,
+      "tag": "0007_known_butterfly",
+      "breakpoints": true
     }
   ]
 }

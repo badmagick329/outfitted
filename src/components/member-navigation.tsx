@@ -7,6 +7,7 @@ import {
   ChevronDown,
   CircleUserRound,
   Layers3,
+  ListChecks,
   Palette,
   ShieldCheck,
   Shirt,
@@ -43,6 +44,14 @@ const destinations: Destination[] = [
     available: ({ canUseAi }) => canUseAi,
     matches: (pathname) => pathname.startsWith("/outfits"),
     activeClassName: "bg-mist text-teal-dark",
+  },
+  {
+    href: "/review",
+    label: "Review",
+    icon: ListChecks,
+    available: ({ canUseAi }) => canUseAi,
+    matches: (pathname) => pathname.startsWith("/review"),
+    activeClassName: "bg-peach text-berry-dark",
   },
   {
     href: "/style",
