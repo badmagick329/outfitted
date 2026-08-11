@@ -7,6 +7,7 @@ import {
   ChevronDown,
   CircleUserRound,
   Layers3,
+  Palette,
   ShieldCheck,
   Shirt,
   type LucideIcon,
@@ -42,6 +43,14 @@ const destinations: Destination[] = [
     available: ({ canUseAi }) => canUseAi,
     matches: (pathname) => pathname.startsWith("/outfits"),
     activeClassName: "bg-mist text-teal-dark",
+  },
+  {
+    href: "/style",
+    label: "Your style",
+    icon: Palette,
+    available: ({ canUseAi }) => canUseAi,
+    matches: (pathname) => pathname.startsWith("/style"),
+    activeClassName: "bg-citrus/45 text-ink",
   },
   {
     href: "/archive",

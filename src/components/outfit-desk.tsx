@@ -454,10 +454,12 @@ function OutfitExplanation({
 export function OutfitDesk({
   items,
   catalogueItems,
+  hasStyleProfile,
   initialSavedOutfits,
 }: {
   items: Item[];
   catalogueItems: Item[];
+  hasStyleProfile: boolean;
   initialSavedOutfits: SavedOutfit[];
 }) {
   const promptField = useRef<HTMLTextAreaElement>(null);
@@ -654,6 +656,31 @@ export function OutfitDesk({
                 ))}
               </select>
             </label>
+            <div className="mt-5 rounded-xl border border-teal/15 bg-mist/55 px-4 py-3 text-sm leading-6 text-ink/65">
+              {hasStyleProfile ? (
+                <>
+                  <span>Your style notes will guide this suggestion. </span>
+                  <Link
+                    className="font-bold text-teal underline-offset-4 hover:underline"
+                    href="/style"
+                  >
+                    Review your notes
+                  </Link>
+                  <span>.</span>
+                </>
+              ) : (
+                <>
+                  <span>Want suggestions that better reflect how you dress? </span>
+                  <Link
+                    className="font-bold text-teal underline-offset-4 hover:underline"
+                    href="/style"
+                  >
+                    Add optional style notes
+                  </Link>
+                  <span>.</span>
+                </>
+              )}
+            </div>
             <Button className="mt-6 w-full" type="submit" disabled={loading || !prompt.trim()}>
               {loading && <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />}
               {loading ? "Putting it together…" : "Suggest an outfit"}

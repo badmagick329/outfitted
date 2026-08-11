@@ -11,5 +11,20 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("Do not return a collection of merely relevant items");
     expect(prompt).toContain("referencedItemIds must contain every garment");
     expect(prompt).toContain("A relaxed Saturday");
+    expect(prompt).not.toContain("USER STYLE PROFILE");
+  });
+
+  it("includes optional style notes as soft preference data", () => {
+    const prompt = buildOutfitSuggestionPrompt("Dinner", [], {
+      generalStyle: "Relaxed tailoring",
+      preferences: "Wide trousers",
+      avoidances: "Very slim fits",
+      occasionNotes: "Keep dinners polished but comfortable",
+    });
+
+    expect(prompt).toContain("USER STYLE PROFILE");
+    expect(prompt).toContain("Relaxed tailoring");
+    expect(prompt).toContain("soft preference data");
+    expect(prompt).toContain("current request and any explicitly selected garment take priority");
   });
 });

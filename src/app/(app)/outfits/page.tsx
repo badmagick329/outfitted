@@ -4,15 +4,17 @@ import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { redirect } from "next/navigation";
 import { requireActiveUser } from "@/features/access/server";
 import { outfitService } from "@/features/outfits/server";
+import { getStyleProfile } from "@/features/style-profile/server";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function OutfitsPage() {
   const access = await requireActiveUser();
   if (!access.canUseAi) redirect("/wardrobe");
-  const [items, archivedItems, savedOutfits] = await Promise.all([
+  const [items, archivedItems, savedOutfits, styleProfile] = await Promise.all([
     wardrobeService.listActiveCards(access.userId),
     wardrobeService.listArchivedCards(access.userId),
     outfitService.listSaved(access.userId),
+    getStyleProfile(access.userId),
   ]);
   const toOutfitItem = ({ id, name, category, coverPhotoId }: (typeof items)[number]) => ({
     id,
@@ -32,6 +34,7 @@ export default async function OutfitsPage() {
       <OutfitDesk
         items={items.map(toOutfitItem)}
         catalogueItems={[...items, ...archivedItems].map(toOutfitItem)}
+        hasStyleProfile={Boolean(styleProfile)}
         initialSavedOutfits={savedOutfits.map(({ saved, suggestion }) => ({
           id: saved.id,
           suggestionId: saved.suggestionId,

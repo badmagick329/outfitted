@@ -75,7 +75,37 @@ describe("OutfitService.create", () => {
     expect(ai.suggest).toHaveBeenCalledWith(
       expect.stringContaining("must include wardrobe item item-1, named Teal shirt"),
       expect.any(Array),
+      null,
     );
+  });
+
+  it("passes the owner’s optional style profile to the AI", async () => {
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Try the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1"],
+        }),
+      ),
+    };
+    const styleProfile = {
+      generalStyle: "Relaxed tailoring",
+      preferences: "Roomy shirts",
+      avoidances: "Very slim fits",
+      occasionNotes: "",
+    };
+    const styleProfiles = { find: vi.fn().mockResolvedValue(styleProfile) };
+    const service = new OutfitService(repository, ai, undefined, styleProfiles);
+
+    await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
+
+    expect(styleProfiles.find).toHaveBeenCalledWith("user-1");
+    expect(ai.suggest).toHaveBeenCalledWith(expect.any(String), expect.any(Array), styleProfile);
   });
 });
 
