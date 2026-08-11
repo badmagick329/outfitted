@@ -6,12 +6,47 @@ import {
 } from "./ai";
 
 describe("garment analysis instructions", () => {
-  it("keeps a specific category while requiring a fixed broad category group", () => {
+  it("explains that the record must stand in for the original images", () => {
+    expect(garmentAnalysisInstructions).toContain("only representation available to other models");
+    expect(garmentAnalysisInstructions).toContain("will not receive the images");
+    expect(garmentAnalysisInstructions).toContain("distinguish this garment from similar pieces");
+    expect(garmentAnalysisInstructions).toContain("without writing an essay");
+  });
+
+  it("gives every structured field a distinct responsibility", () => {
+    for (const field of [
+      "name",
+      "description",
+      "category",
+      "categoryGroup",
+      "primaryColor",
+      "secondaryColors",
+      "material",
+      "fit",
+      "styleTags",
+      "seasons",
+      "formality",
+      "confidence",
+    ]) {
+      expect(garmentAnalysisInstructions).toContain(`\n${field}:`);
+    }
+
     expect(garmentAnalysisInstructions).toContain("concise, specific garment type");
     expect(garmentAnalysisInstructions).toContain(
       "tops, bottoms, outerwear, dresses-jumpsuits, other",
     );
-    expect(garmentAnalysisInstructions).toContain("Do not use categoryGroup for sleeve length");
+    expect(garmentAnalysisInstructions).toContain("Do not repeat its category");
+  });
+
+  it("keeps uncertainty useful instead of mixing incompatible interpretations", () => {
+    expect(garmentAnalysisInstructions).toContain("Clearly separate observed facts");
+    expect(garmentAnalysisInstructions).toContain("put any meaningful uncertainty in confidence");
+    expect(garmentAnalysisInstructions).toContain(
+      "Do not turn an uncertain interpretation into a definitive style tag",
+    );
+    expect(garmentAnalysisInstructions).toContain(
+      "Do not combine materially different interpretations",
+    );
   });
 });
 
