@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- authenticated private image routes cannot use Next's default image loader. */
 import Link from "next/link";
-import { Plus, Shirt } from "lucide-react";
+import { Images, Plus, Shirt } from "lucide-react";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { MemberStatusBadge, type MemberStatus } from "@/components/member-status-badge";
 import { requireActiveUser } from "@/features/access/server";
@@ -19,12 +19,20 @@ export default async function WardrobePage() {
           </p>
         }
         action={
-          <Link
-            href="/upload"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-berry px-5 py-3 text-sm font-bold text-canvas shadow-[3px_3px_0_var(--color-citrus)] transition hover:bg-berry-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"
-          >
-            <Plus size={18} aria-hidden="true" /> Add garment
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/upload/batch"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-teal/30 bg-canvas px-5 py-3 text-sm font-bold text-teal transition hover:border-teal hover:bg-mist focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"
+            >
+              <Images size={18} aria-hidden="true" /> Import several
+            </Link>
+            <Link
+              href="/upload"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-berry px-5 py-3 text-sm font-bold text-canvas shadow-[3px_3px_0_var(--color-citrus)] transition hover:bg-berry-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"
+            >
+              <Plus size={18} aria-hidden="true" /> Add garment
+            </Link>
+          </div>
         }
         tone="mist"
       />
@@ -92,12 +100,20 @@ export default async function WardrobePage() {
           <p className="mt-2 max-w-md text-ink/65">
             Start with one clear photo. We’ll turn it into an editable wardrobe record.
           </p>
-          <Link
-            href="/upload"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-berry px-5 py-3 text-sm font-bold text-canvas"
-          >
-            <Plus size={18} /> Add your first garment
-          </Link>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/upload"
+              className="inline-flex items-center gap-2 rounded-full bg-berry px-5 py-3 text-sm font-bold text-canvas shadow-[3px_3px_0_var(--color-citrus)]"
+            >
+              <Plus size={18} aria-hidden="true" /> Add your first garment
+            </Link>
+            <Link
+              href="/upload/batch"
+              className="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-canvas px-5 py-3 text-sm font-bold text-teal"
+            >
+              <Images size={18} aria-hidden="true" /> Import several
+            </Link>
+          </div>
         </section>
       )}
     </>
