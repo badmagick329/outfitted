@@ -8,10 +8,15 @@ import { MemberStatusBadge, type MemberStatus } from "@/components/member-status
 import { buttonVariants } from "@/components/ui/button";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { requireActiveUser } from "@/features/access/server";
+import { categoryGroupSchema } from "@/features/wardrobe/domain/category-groups";
 import { wardrobeService } from "@/features/wardrobe/server";
 
-export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
+export default async function ItemPage({ params, searchParams }: PageProps<"/items/[id]">) {
   const { id } = await params;
+  const fromCategory = categoryGroupSchema.safeParse((await searchParams).fromCategory);
+  const wardrobeHref = fromCategory.success
+    ? `/wardrobe?category=${encodeURIComponent(fromCategory.data)}`
+    : "/wardrobe";
   const access = await requireActiveUser();
   const userId = access.userId;
   const item = await wardrobeService.findOwnedItem(userId, id);
@@ -26,7 +31,7 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
           item.archivedAt ? (
             <WardrobeBackLink href="/archive" label="Back to archive" />
           ) : (
-            <WardrobeBackLink />
+            <WardrobeBackLink href={wardrobeHref} />
           )
         }
         description={
@@ -64,6 +69,7 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
             updatedAt: item.updatedAt.toISOString(),
           }}
           canUseAi={access.canUseAi}
+          wardrobeHref={wardrobeHref}
         />
       </div>
     </>

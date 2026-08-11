@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { categoryGroupSchema } from "./category-groups";
 import { isSupportedPhoto, maxPhotoSizeBytes, maxPhotosPerGarment } from "./photo-files";
 
 export const wardrobeItemIdSchema = z.string().uuid();
@@ -30,6 +31,7 @@ export const updateWardrobeItemSchema = z
     name: z.string().trim().max(160).optional(),
     description: optionalText(5000),
     category: optionalText(64),
+    categoryGroup: categoryGroupSchema.nullable().optional(),
     primaryColor: optionalText(64),
     secondaryColors: z.array(z.string().trim().min(1).max(64)).max(12).optional(),
     material: optionalText(128),

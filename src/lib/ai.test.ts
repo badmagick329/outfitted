@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildOutfitSuggestionPrompt, buildWardrobeReviewPrompt } from "./ai";
+import {
+  buildOutfitSuggestionPrompt,
+  buildWardrobeReviewPrompt,
+  garmentAnalysisInstructions,
+} from "./ai";
+
+describe("garment analysis instructions", () => {
+  it("keeps a specific category while requiring a fixed broad category group", () => {
+    expect(garmentAnalysisInstructions).toContain("concise, specific garment type");
+    expect(garmentAnalysisInstructions).toContain(
+      "tops, bottoms, outerwear, dresses-jumpsuits, other",
+    );
+    expect(garmentAnalysisInstructions).toContain("Do not use categoryGroup for sleeve length");
+  });
+});
 
 describe("buildOutfitSuggestionPrompt", () => {
   it("asks for one coherent outfit rather than a collection of suggestions", () => {
@@ -37,6 +51,7 @@ describe("buildWardrobeReviewPrompt", () => {
         name: "Teal shirt",
         description: null,
         category: "shirt",
+        categoryGroup: "tops",
         primaryColor: "teal",
         secondaryColors: [],
         material: null,

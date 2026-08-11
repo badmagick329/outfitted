@@ -9,6 +9,7 @@ const item = {
   name: "Teal shirt",
   description: null,
   category: "shirt",
+  categoryGroup: "tops",
   primaryColor: "teal",
   secondaryColors: [],
   material: null,
