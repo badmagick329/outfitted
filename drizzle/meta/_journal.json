@@ -57,6 +57,13 @@
       "when": 1786467707040,
       "tag": "0007_known_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786470762510,
+      "tag": "0008_windy_black_knight",
+      "breakpoints": true
     }
   ]
 }

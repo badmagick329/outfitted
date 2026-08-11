@@ -9,6 +9,7 @@ const item = {
   name: "New garment",
   description: null,
   category: null,
+  categoryGroup: null,
   primaryColor: null,
   secondaryColors: [],
   material: null,

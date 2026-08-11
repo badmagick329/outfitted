@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { itemPhotos, wardrobeItems } from "@/lib/db/schema";
+import { inferCategoryGroup } from "../domain/category-groups";
 import type { UpdateWardrobeItemInput } from "../domain/contracts";
 import type { AnalysisStatus, WardrobeCard, WardrobeRepository } from "../domain/repository";
 import type { ProcessedPhoto } from "../domain/ports";
@@ -138,10 +139,15 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
   }
 
   async updateOwned(ownerId: string, itemId: string, values: UpdateWardrobeItemInput) {
+    const categoryGroup =
+      values.categoryGroup === undefined && values.category !== undefined
+        ? inferCategoryGroup(values.category)
+        : values.categoryGroup;
     await db
       .update(wardrobeItems)
       .set({
         ...values,
+        categoryGroup,
         archivedAt:
           values.archivedAt === undefined
             ? undefined

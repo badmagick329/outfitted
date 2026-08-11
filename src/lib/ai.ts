@@ -3,6 +3,10 @@ import { z } from "zod";
 import type { AiCallResult } from "@/features/ai-usage/domain/contracts";
 import type { StyleProfile } from "@/features/style-profile/domain/contracts";
 import {
+  categoryGroupSchema,
+  categoryGroupValues,
+} from "@/features/wardrobe/domain/category-groups";
+import {
   wardrobeReviewReportSchema,
   type WardrobeReviewReport,
   type WardrobeReviewSourceItem,
@@ -14,6 +18,7 @@ export const analysisSchema = z.object({
   name: z.string().max(160),
   description: z.string(),
   category: z.string(),
+  categoryGroup: categoryGroupSchema,
   primaryColor: z.string(),
   secondaryColors: z.array(z.string()),
   material: z.string().nullable(),
@@ -26,6 +31,8 @@ export const analysisSchema = z.object({
   ),
 });
 export type WardrobeAnalysis = z.infer<typeof analysisSchema>;
+
+export const garmentAnalysisInstructions = `Analyze this single garment from all provided views. Identify the garment and be honest about uncertainty. Use category for a concise, specific garment type such as T-shirt, button-up shirt, cargo trousers, or chore jacket. Choose categoryGroup from this fixed list based on the garment's primary role in an outfit: ${categoryGroupValues.join(", ")}. Do not use categoryGroup for sleeve length, material, fit, or style. For each confidence entry, use a stable field name such as category, categoryGroup, primaryColor, material, fit, season, formality, or styleTags. Use an empty string for note when no clarification is needed.`;
 export const outfitSuggestionSchema = z.object({
   recommendation: z.string(),
   rationale: z.string(),
@@ -102,6 +109,7 @@ ${JSON.stringify(
       name,
       description,
       category,
+      categoryGroup,
       primaryColor,
       secondaryColors,
       material,
@@ -115,6 +123,7 @@ ${JSON.stringify(
       name,
       description,
       category,
+      categoryGroup,
       primaryColor,
       secondaryColors,
       material,
@@ -145,7 +154,7 @@ class OpenAiWardrobeProvider implements AiWardrobeProvider {
           content: [
             {
               type: "input_text",
-              text: "Analyze this single garment from all provided views. Identify the garment; be honest about uncertainty. For each confidence entry, use a stable field name such as category, primaryColor, material, fit, season, formality, or styleTags. Use an empty string for note when no clarification is needed.",
+              text: garmentAnalysisInstructions,
             },
             ...images.map((image) => ({
               type: "input_image" as const,

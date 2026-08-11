@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CategoryGroup } from "@/features/wardrobe/domain/category-groups";
 
 export const wardrobeReviewStatusSchema = z.enum(["pending", "processing", "complete", "failed"]);
 export type WardrobeReviewStatus = z.infer<typeof wardrobeReviewStatusSchema>;
@@ -23,6 +24,7 @@ export type WardrobeReviewSourceItem = {
   name: string;
   description: string | null;
   category: string | null;
+  categoryGroup: CategoryGroup | null;
   primaryColor: string | null;
   secondaryColors: string[];
   material: string | null;

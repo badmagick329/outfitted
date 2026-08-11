@@ -13,6 +13,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import type { WardrobeReviewReport } from "@/features/wardrobe-review/domain/contracts";
+import type { CategoryGroup } from "@/features/wardrobe/domain/category-groups";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -130,6 +131,7 @@ export const wardrobeItems = pgTable("wardrobe_items", {
   name: varchar("name", { length: 160 }).notNull().default(""),
   description: text("description"),
   category: varchar("category", { length: 64 }),
+  categoryGroup: varchar("category_group", { length: 32 }).$type<CategoryGroup>(),
   primaryColor: varchar("primary_color", { length: 64 }),
   secondaryColors: jsonb("secondary_colors").$type<string[]>().notNull().default([]),
   material: varchar("material", { length: 128 }),

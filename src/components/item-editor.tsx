@@ -6,6 +6,11 @@ import { Archive, ChevronDown, LoaderCircle, RotateCcw, Trash2 } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { useAnalysisStatus } from "@/components/analysis-status-poller";
 import {
+  categoryGroupOptions,
+  inferCategoryGroup,
+  type CategoryGroup,
+} from "@/features/wardrobe/domain/category-groups";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -22,6 +27,7 @@ type Item = {
   name: string;
   description: string | null;
   category: string | null;
+  categoryGroup: CategoryGroup | null;
   primaryColor: string | null;
   secondaryColors: string[];
   material: string | null;
@@ -40,6 +46,7 @@ type EditableDetails = Pick<
   | "name"
   | "description"
   | "category"
+  | "categoryGroup"
   | "primaryColor"
   | "secondaryColors"
   | "material"
@@ -49,7 +56,10 @@ type EditableDetails = Pick<
   | "seasons"
 >;
 
-type TextDetail = Exclude<keyof EditableDetails, "secondaryColors" | "styleTags" | "seasons">;
+type TextDetail = Exclude<
+  keyof EditableDetails,
+  "categoryGroup" | "secondaryColors" | "styleTags" | "seasons"
+>;
 type ListDetail = "secondaryColors" | "styleTags" | "seasons";
 
 const inputClassName =
@@ -61,6 +71,7 @@ function editableDetails(item: Item): EditableDetails {
     name: item.name,
     description: item.description,
     category: item.category,
+    categoryGroup: item.categoryGroup ?? inferCategoryGroup(item.category),
     primaryColor: item.primaryColor,
     secondaryColors: [...item.secondaryColors],
     material: item.material,
@@ -87,7 +98,15 @@ async function messageFrom(response: Response, fallback: string) {
   return payload?.error?.message ?? fallback;
 }
 
-export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }) {
+export function ItemEditor({
+  item,
+  canUseAi,
+  wardrobeHref = "/wardrobe",
+}: {
+  item: Item;
+  canUseAi: boolean;
+  wardrobeHref?: string;
+}) {
   const router = useRouter();
   const { trackAnalysis } = useAnalysisStatus();
   const initialDetails = editableDetails(item);
@@ -140,7 +159,10 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
     setSaving(true);
     setError("");
     setNotice("");
-    const submitted = data;
+    const submitted = {
+      ...data,
+      categoryGroup: data.categoryGroup ?? inferCategoryGroup(data.category),
+    };
     try {
       const response = await fetch(`/api/items/${item.id}`, {
         method: "PATCH",
@@ -214,7 +236,7 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
         setError(await messageFrom(response, "Couldn’t delete this garment."));
         return;
       }
-      router.push(item.archivedAt ? "/archive" : "/wardrobe");
+      router.push(item.archivedAt ? "/archive" : wardrobeHref);
       router.refresh();
     } catch {
       setError("Couldn’t delete this garment. Check your connection and try again.");
@@ -314,6 +336,27 @@ export function ItemEditor({ item, canUseAi }: { item: Item; canUseAi: boolean }
                 value={data.category ?? ""}
                 onChange={(event) => setText("category", event.target.value)}
               />
+            </label>
+            <label className={labelClassName}>
+              Wardrobe section
+              <select
+                className={inputClassName}
+                value={data.categoryGroup ?? ""}
+                onChange={(event) => {
+                  setNotice("");
+                  setData((previous) => ({
+                    ...previous,
+                    categoryGroup: (event.target.value || null) as CategoryGroup | null,
+                  }));
+                }}
+              >
+                <option value="">Not set</option>
+                {categoryGroupOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className={labelClassName}>
               Main colour
