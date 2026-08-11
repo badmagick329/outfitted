@@ -1,7 +1,7 @@
 import { conflict, notFound } from "@/shared/application-error";
 import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
 import type { CreateOutfitSuggestionInput, SaveOutfitInput } from "../domain/contracts";
-import type { OutfitAi, OutfitAiUsageRecorder } from "../domain/ports";
+import type { OutfitAi, OutfitAiUsageRecorder, OutfitStyleProfileReader } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
 
 export class OutfitService {
@@ -9,10 +9,14 @@ export class OutfitService {
     private readonly repository: OutfitRepository,
     private readonly ai: OutfitAi,
     private readonly usageRecorder?: OutfitAiUsageRecorder,
+    private readonly styleProfiles?: OutfitStyleProfileReader,
   ) {}
 
   async create(ownerId: string, input: CreateOutfitSuggestionInput) {
-    const items = await this.repository.listActiveWardrobe(ownerId);
+    const [items, styleProfile] = await Promise.all([
+      this.repository.listActiveWardrobe(ownerId),
+      this.styleProfiles?.find(ownerId) ?? Promise.resolve(null),
+    ]);
     if (input.selectedItemId && !items.some((item) => item.id === input.selectedItemId))
       throw notFound("Selected garment not found");
     const selected = input.selectedItemId
@@ -53,6 +57,7 @@ export class OutfitService {
               formality,
             }),
           ),
+          styleProfile,
         ),
     });
     const allowedIds = new Set(items.map((item) => item.id));

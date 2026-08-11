@@ -69,6 +69,17 @@ export const aiUsageEvents = pgTable(
   ],
 );
 
+export const userStyleProfiles = pgTable("user_style_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  generalStyle: text("general_style").notNull().default(""),
+  preferences: text("preferences").notNull().default(""),
+  avoidances: text("avoidances").notNull().default(""),
+  occasionNotes: text("occasion_notes").notNull().default(""),
+  ...timestamps,
+});
+
 export const accounts = pgTable(
   "accounts",
   {
