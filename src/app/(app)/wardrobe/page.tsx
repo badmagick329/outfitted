@@ -55,7 +55,7 @@ export default async function WardrobePage() {
               >
                 {item.coverPhotoId ? (
                   <img
-                    src={`/api/photos/${item.coverPhotoId}`}
+                    src={`/api/photos/${item.coverPhotoId}?variant=thumbnail`}
                     alt={item.name || item.category || "Garment"}
                     loading="lazy"
                     decoding="async"
