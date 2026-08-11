@@ -1,4 +1,4 @@
-export type AiUsageOperation = "garment_analysis" | "outfit_suggestion";
+export type AiUsageOperation = "garment_analysis" | "outfit_suggestion" | "wardrobe_review";
 export type AiUsageStatus = "success" | "failed";
 
 export type AiTokenUsage = {

@@ -82,6 +82,7 @@ export async function getAiUsageDashboard(days: AiUsageRange) {
       requestCount: number;
       garmentAnalysisCount: number;
       outfitSuggestionCount: number;
+      wardrobeReviewCount: number;
       failedCount: number;
     }
   >();
@@ -114,12 +115,14 @@ export async function getAiUsageDashboard(days: AiUsageRange) {
       requestCount: 0,
       garmentAnalysisCount: 0,
       outfitSuggestionCount: 0,
+      wardrobeReviewCount: 0,
       failedCount: 0,
     };
     user.costMicrousd += row.estimatedCostMicrousd;
     user.requestCount += 1;
     if (row.operation === "garment_analysis") user.garmentAnalysisCount += 1;
     if (row.operation === "outfit_suggestion") user.outfitSuggestionCount += 1;
+    if (row.operation === "wardrobe_review") user.wardrobeReviewCount += 1;
     if (row.status === "failed") user.failedCount += 1;
     perUser.set(row.userId, user);
   }

@@ -15,8 +15,8 @@ export default async function StylePage() {
         title="Your style"
         description={
           <p>
-            Share a few optional notes about how you like to dress. Outfit Desk will take them into
-            account when it puts a look together.
+            Share a few optional notes about how you like to dress. They will shape outfit
+            suggestions and wardrobe reviews.
           </p>
         }
         tone="peach"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOutfitSuggestionPrompt } from "./ai";
+import { buildOutfitSuggestionPrompt, buildWardrobeReviewPrompt } from "./ai";
 
 describe("buildOutfitSuggestionPrompt", () => {
   it("asks for one coherent outfit rather than a collection of suggestions", () => {
@@ -26,5 +26,33 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("Relaxed tailoring");
     expect(prompt).toContain("soft preference data");
     expect(prompt).toContain("current request and any explicitly selected garment take priority");
+  });
+});
+
+describe("buildWardrobeReviewPrompt", () => {
+  it("permits an honest no-gap result and rejects manufactured shopping needs", () => {
+    const prompt = buildWardrobeReviewPrompt([
+      {
+        id: "7c1bcc30-61e7-4b82-bb99-bd73f33d926d",
+        name: "Teal shirt",
+        description: null,
+        category: "shirt",
+        primaryColor: "teal",
+        secondaryColors: [],
+        material: null,
+        fit: null,
+        styleTags: [],
+        seasons: [],
+        formality: null,
+        analysisStatus: "complete",
+        updatedAt: new Date(),
+        coverPhotoId: null,
+      },
+    ]);
+
+    expect(prompt).toContain("Do not invent gaps");
+    expect(prompt).toContain("return an empty array");
+    expect(prompt).toContain("Never disguise an optional shopping idea as a gap");
+    expect(prompt).not.toContain("USER STYLE PROFILE");
   });
 });

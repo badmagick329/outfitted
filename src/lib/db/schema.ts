@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -6,9 +8,11 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { WardrobeReviewReport } from "@/features/wardrobe-review/domain/contracts";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -157,6 +161,31 @@ export const itemPhotos = pgTable("item_photos", {
   position: integer("position").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const wardrobeReviews = pgTable(
+  "wardrobe_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    report: jsonb("report").$type<WardrobeReviewReport>(),
+    sourceSignature: varchar("source_signature", { length: 64 }).notNull(),
+    itemCount: integer("item_count").notNull(),
+    usedStyleProfile: boolean("used_style_profile").notNull().default(false),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("wardrobe_reviews_user_created_at_idx").on(table.userId, table.createdAt),
+    uniqueIndex("wardrobe_reviews_one_active_user_idx")
+      .on(table.userId)
+      .where(sql`${table.status} in ('pending', 'processing')`),
+  ],
+);
 
 export const outfitSuggestions = pgTable("outfit_suggestions", {
   id: uuid("id").defaultRandom().primaryKey(),

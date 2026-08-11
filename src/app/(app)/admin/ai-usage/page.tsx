@@ -127,7 +127,7 @@ export default async function AiUsagePage({
           </div>
           {dashboard.users.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[48rem] text-left text-sm">
+              <table className="w-full min-w-[54rem] text-left text-sm">
                 <thead className="border-b border-line bg-canvas/55 font-mono text-[10px] uppercase tracking-wide text-ink/50">
                   <tr>
                     <th className="px-5 py-3 font-bold sm:px-7">Member</th>
@@ -135,6 +135,7 @@ export default async function AiUsagePage({
                     <th className="px-4 py-3 font-bold">Requests</th>
                     <th className="px-4 py-3 font-bold">Analysis</th>
                     <th className="px-4 py-3 font-bold">Outfits</th>
+                    <th className="px-4 py-3 font-bold">Reviews</th>
                     <th className="px-4 py-3 font-bold">Failed</th>
                   </tr>
                 </thead>
@@ -149,6 +150,7 @@ export default async function AiUsagePage({
                       <td className="px-4 py-4">{user.requestCount}</td>
                       <td className="px-4 py-4">{user.garmentAnalysisCount}</td>
                       <td className="px-4 py-4">{user.outfitSuggestionCount}</td>
+                      <td className="px-4 py-4">{user.wardrobeReviewCount}</td>
                       <td className="px-4 py-4">
                         <span
                           className={user.failedCount ? "font-bold text-red-700" : "text-ink/45"}
@@ -165,7 +167,7 @@ export default async function AiUsagePage({
             <div className="px-5 py-10 text-center sm:px-7">
               <strong className="block text-lg">No AI requests in this period</strong>
               <p className="mt-1 text-sm text-ink/60">
-                New garment analyses and outfit suggestions will appear here.
+                New garment analyses, outfit suggestions and wardrobe reviews will appear here.
               </p>
             </div>
           )}
