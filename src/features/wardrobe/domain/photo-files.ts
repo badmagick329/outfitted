@@ -8,6 +8,8 @@ const supportedMimeTypes = new Set([
 
 const supportedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
 
+export const maxPhotosPerGarment = 6;
+export const maxPhotoSizeBytes = 12 * 1024 * 1024;
 export const photoInputAccept = [...supportedMimeTypes, ...supportedExtensions].join(",");
 
 export function isSupportedPhoto(file: Pick<File, "name" | "type">) {

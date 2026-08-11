@@ -11,11 +11,10 @@ import { useUploadDraft } from "@/components/upload-draft-provider";
 import {
   canPreviewPhoto,
   isSupportedPhoto,
+  maxPhotoSizeBytes,
+  maxPhotosPerGarment,
   photoInputAccept,
 } from "@/features/wardrobe/domain/photo-files";
-
-const maxPhotos = 6;
-const maxPhotoSize = 12 * 1024 * 1024;
 
 type UploadResponse = {
   itemId?: unknown;
@@ -72,14 +71,14 @@ export function UploadForm() {
       return;
     }
 
-    const oversized = selectedFiles.find((file) => file.size > maxPhotoSize);
+    const oversized = selectedFiles.find((file) => file.size > maxPhotoSizeBytes);
     if (oversized) {
       setError(`${oversized.name} is larger than 12MB. Choose a smaller photo.`);
       setNotice("");
       return;
     }
 
-    const availableSlots = maxPhotos - files.length;
+    const availableSlots = maxPhotosPerGarment - files.length;
     if (availableSlots <= 0) {
       setError("");
       setNotice("You already have six photos selected. Remove one to add another.");
@@ -183,9 +182,9 @@ export function UploadForm() {
         </strong>
         <span id="photo-requirements" className="mt-2 text-sm text-ink/60">
           {files.length
-            ? files.length === maxPhotos
+            ? files.length === maxPhotosPerGarment
               ? "Six-photo limit reached"
-              : `Add up to ${maxPhotos - files.length} more`
+              : `Add up to ${maxPhotosPerGarment - files.length} more`
             : "Take a photo, choose from your library, or drop files here"}
         </span>
         <span className="mt-1 max-w-md text-sm text-ink/60">
@@ -197,7 +196,7 @@ export function UploadForm() {
             className="flex-1"
             type="button"
             variant="secondary"
-            disabled={loading || files.length >= maxPhotos}
+            disabled={loading || files.length >= maxPhotosPerGarment}
             onClick={() => cameraInputRef.current?.click()}
           >
             <Camera size={17} aria-hidden="true" />
@@ -207,7 +206,7 @@ export function UploadForm() {
             className="flex-1"
             type="button"
             variant="outline"
-            disabled={loading || files.length >= maxPhotos}
+            disabled={loading || files.length >= maxPhotosPerGarment}
             onClick={() => libraryInputRef.current?.click()}
           >
             <Images size={17} aria-hidden="true" />
