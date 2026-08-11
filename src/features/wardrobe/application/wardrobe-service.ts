@@ -14,6 +14,7 @@ import type {
   WardrobeStorage,
 } from "../domain/ports";
 import type { WardrobeRepository } from "../domain/repository";
+import type { ImageVariant } from "@/lib/storage";
 
 type Dependencies = {
   repository: WardrobeRepository;
@@ -57,10 +58,10 @@ export class WardrobeService {
     return this.dependencies.repository.listOwnedPhotos(ownerId, itemId);
   }
 
-  async readOwnedPhoto(ownerId: string, photoId: string) {
+  async readOwnedPhoto(ownerId: string, photoId: string, variant: ImageVariant = "display") {
     const photo = await this.dependencies.repository.findOwnedPhoto(ownerId, photoId);
     if (!photo) throw notFound("Photo not found");
-    return this.dependencies.storage.read(photo.storageKey);
+    return this.dependencies.storage.read(photo.storageKey, variant);
   }
 
   async create(ownerId: string, files: File[], queueAnalysis: boolean) {
