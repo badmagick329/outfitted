@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { outfitSuggestions, savedOutfits, wardrobeItems } from "@/lib/db/schema";
+import { ignoredOutfits, outfitSuggestions, savedOutfits, wardrobeItems } from "@/lib/db/schema";
 import type { OutfitRepository } from "../domain/repository";
 
 export class DrizzleOutfitRepository implements OutfitRepository {
@@ -69,6 +69,21 @@ export class DrizzleOutfitRepository implements OutfitRepository {
       .orderBy(desc(savedOutfits.createdAt));
   }
 
+  async listExcludedItemIds(ownerId: string) {
+    const [saved, ignored] = await Promise.all([
+      db
+        .select({ selectedItemIds: outfitSuggestions.selectedItemIds })
+        .from(savedOutfits)
+        .innerJoin(outfitSuggestions, eq(savedOutfits.suggestionId, outfitSuggestions.id))
+        .where(eq(savedOutfits.userId, ownerId)),
+      db
+        .select({ selectedItemIds: ignoredOutfits.selectedItemIds })
+        .from(ignoredOutfits)
+        .where(eq(ignoredOutfits.userId, ownerId)),
+    ]);
+    return [...saved, ...ignored].map(({ selectedItemIds }) => selectedItemIds);
+  }
+
   async findSaved(ownerId: string, suggestionId: string) {
     const [saved] = await db
       .select()
@@ -93,6 +108,23 @@ export class DrizzleOutfitRepository implements OutfitRepository {
       .values({ userId: ownerId, suggestionId, name })
       .returning();
     return saved;
+  }
+
+  async ignore(input: {
+    ownerId: string;
+    suggestionId: string;
+    selectedItemIds: string[];
+    itemSignature: string;
+  }) {
+    await db
+      .insert(ignoredOutfits)
+      .values({
+        userId: input.ownerId,
+        suggestionId: input.suggestionId,
+        selectedItemIds: input.selectedItemIds,
+        itemSignature: input.itemSignature,
+      })
+      .onConflictDoNothing();
   }
 
   async deleteSaved(ownerId: string, savedOutfitId: string) {

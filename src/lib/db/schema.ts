@@ -212,3 +212,23 @@ export const savedOutfits = pgTable("saved_outfits", {
   name: varchar("name", { length: 160 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const ignoredOutfits = pgTable(
+  "ignored_outfits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    suggestionId: uuid("suggestion_id")
+      .notNull()
+      .references(() => outfitSuggestions.id, { onDelete: "cascade" }),
+    selectedItemIds: jsonb("selected_item_ids").$type<string[]>().notNull(),
+    itemSignature: text("item_signature").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("ignored_outfits_user_signature_idx").on(table.userId, table.itemSignature),
+    uniqueIndex("ignored_outfits_user_suggestion_idx").on(table.userId, table.suggestionId),
+  ],
+);

@@ -1,6 +1,11 @@
 import { conflict, notFound } from "@/shared/application-error";
 import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
-import type { CreateOutfitSuggestionInput, SaveOutfitInput } from "../domain/contracts";
+import type {
+  CreateOutfitSuggestionInput,
+  IgnoreOutfitInput,
+  SaveOutfitInput,
+} from "../domain/contracts";
+import { canonicalOutfitItemIds, outfitSignature } from "../domain/outfit-signature";
 import type { OutfitAi, OutfitAiUsageRecorder, OutfitStyleProfileReader } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
 
@@ -13,55 +18,82 @@ export class OutfitService {
   ) {}
 
   async create(ownerId: string, input: CreateOutfitSuggestionInput) {
-    const [items, styleProfile] = await Promise.all([
+    const [items, styleProfile, excludedOutfitItemIds] = await Promise.all([
       this.repository.listActiveWardrobe(ownerId),
       this.styleProfiles?.find(ownerId) ?? Promise.resolve(null),
+      this.repository.listExcludedItemIds(ownerId),
     ]);
     if (input.selectedItemId && !items.some((item) => item.id === input.selectedItemId))
       throw notFound("Selected garment not found");
     const selected = input.selectedItemId
       ? items.find((item) => item.id === input.selectedItemId)
       : undefined;
-    const result = await trackAiCall({
-      recorder: this.usageRecorder,
-      userId: ownerId,
-      operation: "outfit_suggestion",
-      model: this.ai.model ?? "unknown",
-      call: () =>
-        this.ai.suggest(
-          selected
-            ? `${input.prompt}\nThe chosen outfit must include wardrobe item ${selected.id}, named ${selected.name}.`
-            : input.prompt,
-          items.map(
-            ({
-              id,
-              name,
-              description,
-              category,
-              primaryColor,
-              material,
-              fit,
-              styleTags,
-              seasons,
-              formality,
-            }) => ({
-              id,
-              name,
-              description,
-              category,
-              primaryColor,
-              material,
-              fit,
-              styleTags,
-              seasons,
-              formality,
-            }),
+    const request = selected
+      ? `${input.prompt}\nThe chosen outfit must include wardrobe item ${selected.id}, named ${selected.name}.`
+      : input.prompt;
+    const wardrobe = items.map(
+      ({
+        id,
+        name,
+        description,
+        category,
+        categoryGroup,
+        primaryColor,
+        secondaryColors,
+        material,
+        fit,
+        styleTags,
+        seasons,
+        formality,
+        confidence,
+        analysisStatus,
+      }) => ({
+        id,
+        name,
+        description,
+        category,
+        categoryGroup,
+        primaryColor,
+        secondaryColors,
+        material,
+        fit,
+        styleTags,
+        seasons,
+        formality,
+        confidence,
+        analysisStatus,
+      }),
+    );
+    const suggest = (retry: boolean) =>
+      trackAiCall({
+        recorder: this.usageRecorder,
+        userId: ownerId,
+        operation: "outfit_suggestion",
+        model: this.ai.model ?? "unknown",
+        call: () =>
+          this.ai.suggest(
+            retry
+              ? `${request}\nThe previous attempt repeated an outfit already saved or ignored. Choose a genuinely different garment combination.`
+              : request,
+            wardrobe,
+            styleProfile,
+            excludedOutfitItemIds,
           ),
-          styleProfile,
-        ),
-    });
+      });
+    let result = await suggest(false);
     const allowedIds = new Set(items.map((item) => item.id));
-    const referencedItemIds = result.referencedItemIds.filter((id) => allowedIds.has(id));
+    const sanitizeItemIds = (itemIds: string[]) =>
+      itemIds.filter((id, index) => allowedIds.has(id) && itemIds.indexOf(id) === index);
+    const excludedSignatures = new Set(excludedOutfitItemIds.map(outfitSignature));
+    let referencedItemIds = sanitizeItemIds(result.referencedItemIds);
+    if (referencedItemIds.length && excludedSignatures.has(outfitSignature(referencedItemIds))) {
+      result = await suggest(true);
+      referencedItemIds = sanitizeItemIds(result.referencedItemIds);
+    }
+    if (!referencedItemIds.length)
+      throw conflict("We couldn’t form an outfit from the available garments.");
+    if (excludedSignatures.has(outfitSignature(referencedItemIds)))
+      throw conflict("There isn’t a different outfit to suggest from the available garments.");
     const suggestion = await this.repository.createSuggestion({
       ownerId,
       request: input.prompt,
@@ -92,6 +124,28 @@ export class OutfitService {
       rationale: input.rationale,
     });
     return this.repository.save(ownerId, input.suggestionId, input.name);
+  }
+
+  async ignore(ownerId: string, input: IgnoreOutfitInput) {
+    if (!(await this.repository.findSuggestion(ownerId, input.suggestionId)))
+      throw notFound("Outfit suggestion not found");
+    const activeItemIds = new Set(
+      (await this.repository.listActiveWardrobe(ownerId)).map((item) => item.id),
+    );
+    if (input.referencedItemIds.some((itemId) => !activeItemIds.has(itemId)))
+      throw conflict("One or more garments in this outfit are no longer available.");
+    const selectedItemIds = canonicalOutfitItemIds(input.referencedItemIds);
+    await this.repository.updateSuggestion(ownerId, input.suggestionId, {
+      selectedItemIds,
+      recommendation: input.recommendation,
+      rationale: input.rationale,
+    });
+    await this.repository.ignore({
+      ownerId,
+      suggestionId: input.suggestionId,
+      selectedItemIds,
+      itemSignature: outfitSignature(selectedItemIds),
+    });
   }
 
   async removeSaved(ownerId: string, savedOutfitId: string) {

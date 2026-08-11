@@ -64,6 +64,13 @@
       "when": 1786470762510,
       "tag": "0008_windy_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786491609020,
+      "tag": "0009_square_sentinels",
+      "breakpoints": true
     }
   ]
 }
