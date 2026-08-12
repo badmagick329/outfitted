@@ -172,16 +172,14 @@ export function MemberNavigation({
         </div>
       </aside>
 
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[100dvh] lg:hidden">
-        <nav
-          className="pointer-events-auto absolute inset-x-0 bottom-0 border-t border-line bg-canvas/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
-          aria-label="Member navigation"
-        >
-          <div className="mx-auto grid max-w-md grid-flow-col auto-cols-fr gap-1">
-            <NavigationLinks canUseAi={canUseAi} isAdmin={isAdmin} mobile />
-          </div>
-        </nav>
-      </div>
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
+        aria-label="Member navigation"
+      >
+        <div className="mx-auto grid max-w-md grid-flow-col auto-cols-fr gap-1">
+          <NavigationLinks canUseAi={canUseAi} isAdmin={isAdmin} mobile />
+        </div>
+      </nav>
     </>
   );
 }
