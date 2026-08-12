@@ -125,17 +125,24 @@ export function WardrobeGrid({
   }
 
   const activeLabel = categoryGroupOptions.find(({ value }) => value === activeFilter)?.label;
+  const resultCountLabel =
+    activeFilter === "all"
+      ? `${items.length} ${items.length === 1 ? "piece" : "pieces"}`
+      : `${filteredItems.length} of ${items.length} pieces`;
 
   return (
     <>
-      <nav className="mt-7 flex items-center gap-3" aria-label="Filter wardrobe by category">
-        <div className="-mx-5 min-w-0 flex-1 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-          <div className="flex w-max items-center gap-2">
+      <nav className="mt-7" aria-label="Filter wardrobe by category">
+        <span className="mb-3 block text-sm font-medium text-ink/50 sm:hidden" aria-live="polite">
+          {resultCountLabel}
+        </span>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
+          <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2">
             <button
               type="button"
               aria-pressed={activeFilter === "all"}
               onClick={() => selectFilter("all")}
-              className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry ${
+              className={`w-full whitespace-nowrap rounded-full border px-3 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry sm:w-auto sm:px-4 ${
                 activeFilter === "all"
                   ? "border-teal bg-teal text-canvas"
                   : "border-line bg-canvas text-ink/65 hover:border-teal hover:text-teal"
@@ -149,7 +156,7 @@ export function WardrobeGrid({
                 type="button"
                 aria-pressed={activeFilter === option.value}
                 onClick={() => selectFilter(option.value)}
-                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry ${
+                className={`w-full whitespace-nowrap rounded-full border px-3 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry sm:w-auto sm:px-4 ${
                   activeFilter === option.value
                     ? "border-teal bg-teal text-canvas"
                     : "border-line bg-canvas text-ink/65 hover:border-teal hover:text-teal"
@@ -159,12 +166,13 @@ export function WardrobeGrid({
               </button>
             ))}
           </div>
+          <span
+            className="hidden shrink-0 text-sm font-medium text-ink/50 sm:ml-auto sm:block"
+            aria-live="polite"
+          >
+            {resultCountLabel}
+          </span>
         </div>
-        <span className="shrink-0 text-xs font-medium text-ink/50 sm:text-sm" aria-live="polite">
-          {activeFilter === "all"
-            ? `${items.length} ${items.length === 1 ? "piece" : "pieces"}`
-            : `${filteredItems.length} of ${items.length}`}
-        </span>
       </nav>
 
       {filteredItems.length ? (
