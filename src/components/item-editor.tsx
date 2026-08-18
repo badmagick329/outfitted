@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useAnalysisStatus } from "@/components/analysis-status-poller";
 import {
   categoryGroupOptions,
+  detailedCategoryValues,
+  formalityValues,
   inferCategoryGroup,
   type CategoryGroup,
 } from "@/features/wardrobe/domain/category-groups";
@@ -331,33 +333,38 @@ export function ItemEditor({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={labelClassName}>
               Category
-              <input
-                className={inputClassName}
-                value={data.category ?? ""}
-                onChange={(event) => setText("category", event.target.value)}
-              />
-            </label>
-            <label className={labelClassName}>
-              Wardrobe section
               <select
                 className={inputClassName}
-                value={data.categoryGroup ?? ""}
+                value={data.category ?? ""}
                 onChange={(event) => {
                   setNotice("");
                   setData((previous) => ({
                     ...previous,
-                    categoryGroup: (event.target.value || null) as CategoryGroup | null,
+                    category: event.target.value || null,
+                    categoryGroup: event.target.value
+                      ? inferCategoryGroup(event.target.value)
+                      : previous.categoryGroup,
                   }));
                 }}
               >
-                <option value="">Not set</option>
-                {categoryGroupOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                {data.category && !detailedCategoryValues.includes(data.category as never) && (
+                  <option value={data.category}>{data.category}</option>
+                )}
+                <option value="">Choose a category</option>
+                {detailedCategoryValues.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
                   </option>
                 ))}
               </select>
             </label>
+            <div className={labelClassName}>
+              Wardrobe section
+              <div className={`${inputClassName} flex items-center text-ink/65`}>
+                {categoryGroupOptions.find((option) => option.value === data.categoryGroup)
+                  ?.label ?? "Set from category"}
+              </div>
+            </div>
             <label className={labelClassName}>
               Main colour
               <input
@@ -399,11 +406,21 @@ export function ItemEditor({
             </label>
             <label className={labelClassName}>
               Formality
-              <input
+              <select
                 className={inputClassName}
                 value={data.formality ?? ""}
                 onChange={(event) => setText("formality", event.target.value)}
-              />
+              >
+                {data.formality && !formalityValues.includes(data.formality as never) && (
+                  <option value={data.formality}>{data.formality}</option>
+                )}
+                <option value="">Not set</option>
+                {formalityValues.map((formality) => (
+                  <option key={formality} value={formality}>
+                    {formality}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className={labelClassName}>
               Style tags

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildGarmentAnalysisPrompt,
   buildOutfitSuggestionPrompt,
   buildWardrobeReviewPrompt,
-  garmentAnalysisInstructions,
-} from "./ai";
+} from "./ai-prompts";
 
 describe("garment analysis instructions", () => {
+  const garmentAnalysisInstructions = buildGarmentAnalysisPrompt();
   it("explains that the record must stand in for the original images", () => {
     expect(garmentAnalysisInstructions).toContain("only representation available to other models");
     expect(garmentAnalysisInstructions).toContain("will not receive the images");
@@ -18,7 +19,6 @@ describe("garment analysis instructions", () => {
       "name",
       "description",
       "category",
-      "categoryGroup",
       "primaryColor",
       "secondaryColors",
       "material",
@@ -31,10 +31,7 @@ describe("garment analysis instructions", () => {
       expect(garmentAnalysisInstructions).toContain(`\n${field}:`);
     }
 
-    expect(garmentAnalysisInstructions).toContain("concise, specific garment type");
-    expect(garmentAnalysisInstructions).toContain(
-      "tops, bottoms, outerwear, dresses-jumpsuits, other",
-    );
+    expect(garmentAnalysisInstructions).toContain("T-shirt");
     expect(garmentAnalysisInstructions).toContain("Do not repeat its category");
   });
 
@@ -47,6 +44,13 @@ describe("garment analysis instructions", () => {
     expect(garmentAnalysisInstructions).toContain(
       "Do not combine materially different interpretations",
     );
+  });
+
+  it("supplies established style tags while allowing useful new ones", () => {
+    const prompt = buildGarmentAnalysisPrompt([{ value: "Minimalist", count: 11 }]);
+    expect(prompt).toContain("EXISTING STYLE-TAG VOCABULARY");
+    expect(prompt).toContain("Minimalist (11)");
+    expect(prompt).toContain("Create a new tag only when it is genuinely distinct");
   });
 });
 

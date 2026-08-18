@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { categoryGroupSchema } from "./category-groups";
+import { categoryGroupSchema, detailedCategorySchema, formalitySchema } from "./category-groups";
 import { isSupportedPhoto, maxPhotoSizeBytes, maxPhotosPerGarment } from "./photo-files";
 
 export const wardrobeItemIdSchema = z.string().uuid();
@@ -42,7 +42,7 @@ export const updateWardrobeItemSchema = z
   .object({
     name: z.string().trim().max(160).optional(),
     description: optionalText(5000),
-    category: optionalText(64),
+    category: detailedCategorySchema.nullable().optional(),
     categoryGroup: categoryGroupSchema.nullable().optional(),
     primaryColor: optionalText(64),
     secondaryColors: z.array(z.string().trim().min(1).max(64)).max(12).optional(),
@@ -50,7 +50,7 @@ export const updateWardrobeItemSchema = z
     fit: optionalText(128),
     styleTags: z.array(z.string().trim().min(1).max(64)).max(20).optional(),
     seasons: z.array(z.string().trim().min(1).max(32)).max(8).optional(),
-    formality: optionalText(64),
+    formality: formalitySchema.nullable().optional(),
     archivedAt: z.string().datetime().nullable().optional(),
   })
   .strict();

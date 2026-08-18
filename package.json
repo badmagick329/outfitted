@@ -14,6 +14,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"*.{js,mjs,cjs,ts,json,css}\" \".github/**/*.{yml,yaml}\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "maintenance:normalize-wardrobe": "bun run scripts/normalize-wardrobe-metadata.ts",
     "worker": "bun run src/worker.ts"
   },
   "dependencies": {

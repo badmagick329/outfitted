@@ -1,4 +1,5 @@
 import { categoryGroupSchema, resolveCategoryGroup, type CategoryGroup } from "./category-groups";
+import { establishedVocabulary, metadataKey, normalizeMetadataText } from "./metadata";
 
 export type WardrobeFilters = {
   section: CategoryGroup | null;
@@ -7,21 +8,19 @@ export type WardrobeFilters = {
 };
 export type WardrobeFacet = { value: string; label: string };
 type Query = Record<string, string | string[] | undefined>;
-export function normalizeFacet(value: string) {
-  return value.trim().replace(/\s+/g, " ");
-}
+export const normalizeFacet = normalizeMetadataText;
 function key(value: string) {
-  return normalizeFacet(value).toLocaleLowerCase();
+  return metadataKey(value);
 }
 function values(value: string | string[] | undefined) {
-  return (Array.isArray(value) ? value : value ? [value] : []).map(normalizeFacet).filter(Boolean);
+  return (Array.isArray(value) ? value : value ? [value] : []).flatMap(
+    (entry) => normalizeFacet(entry) ?? [],
+  );
 }
 function options(input: Array<string | null | undefined>): WardrobeFacet[] {
-  const found = new Map<string, string>();
-  for (const value of input) if (value && key(value)) found.set(key(value), normalizeFacet(value));
-  return [...found]
-    .sort((a, b) => a[1].localeCompare(b[1]))
-    .map(([value, label]) => ({ value, label }));
+  return establishedVocabulary(input)
+    .map((label) => ({ value: key(label), label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 export function wardrobeFacets(items: Array<{ category: string | null; styleTags: string[] }>) {
   return {
