@@ -12,7 +12,6 @@ import {
   EyeOff,
   LoaderCircle,
   Pencil,
-  RefreshCw,
   Shirt,
   Trash2,
   X,
@@ -909,20 +908,6 @@ export function OutfitDesk({
                   />
                 )}
                 <div className="mt-4 flex flex-wrap items-center gap-1">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    onClick={requestSuggestion}
-                    disabled={loading || saving || ignoring}
-                  >
-                    {loading ? (
-                      <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
-                    ) : (
-                      <RefreshCw size={15} aria-hidden="true" />
-                    )}
-                    {loading ? "Putting it together…" : "Suggest another outfit"}
-                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
