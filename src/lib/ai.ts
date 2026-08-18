@@ -7,6 +7,7 @@ import {
   formalitySchema,
 } from "@/features/wardrobe/domain/category-groups";
 import type { VocabularyEntry } from "@/features/wardrobe/domain/metadata";
+import { seasonValues } from "@/features/wardrobe/domain/metadata";
 import {
   wardrobeReviewReportSchema,
   type WardrobeReviewReport,
@@ -28,7 +29,7 @@ export const analysisSchema = z.object({
   material: z.string().nullable(),
   fit: z.string().nullable(),
   styleTags: z.array(z.string()).max(5),
-  seasons: z.array(z.string()),
+  seasons: z.array(z.enum(seasonValues)).max(4),
   formality: formalitySchema,
   confidence: z.array(
     z.object({ field: z.string(), level: z.enum(["high", "medium", "low"]), note: z.string() }),

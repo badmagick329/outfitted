@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, ChevronDown, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MetadataTokenField } from "@/components/metadata-token-field";
 import { useAnalysisStatus } from "@/components/analysis-status-poller";
 import {
   categoryGroupOptions,
@@ -12,6 +13,8 @@ import {
   inferCategoryGroup,
   type CategoryGroup,
 } from "@/features/wardrobe/domain/category-groups";
+import { normalizeSeasons, seasonValues } from "@/features/wardrobe/domain/metadata";
+import { commitTokenDraft } from "@/features/wardrobe/domain/token-field";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,8 +65,6 @@ type TextDetail = Exclude<
   keyof EditableDetails,
   "categoryGroup" | "secondaryColors" | "styleTags" | "seasons"
 >;
-type ListDetail = "secondaryColors" | "styleTags" | "seasons";
-
 const inputClassName =
   "mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm outline-none transition placeholder:text-ink/35 focus:border-teal focus:ring-2 focus:ring-teal/15";
 const labelClassName = "block text-sm font-bold text-ink";
@@ -80,19 +81,12 @@ function editableDetails(item: Item): EditableDetails {
     fit: item.fit,
     formality: item.formality,
     styleTags: [...item.styleTags],
-    seasons: [...item.seasons],
+    seasons: normalizeSeasons(item.seasons),
   };
 }
 
 function detailsMatch(left: EditableDetails, right: EditableDetails) {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function commaSeparated(value: string) {
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 }
 
 async function messageFrom(response: Response, fallback: string) {
@@ -104,16 +98,19 @@ export function ItemEditor({
   item,
   canUseAi,
   wardrobeHref = "/wardrobe",
+  styleTagSuggestions = [],
 }: {
   item: Item;
   canUseAi: boolean;
   wardrobeHref?: string;
+  styleTagSuggestions?: string[];
 }) {
   const router = useRouter();
   const { trackAnalysis } = useAnalysisStatus();
   const initialDetails = editableDetails(item);
   const [data, setData] = useState(initialDetails);
   const [savedData, setSavedData] = useState(initialDetails);
+  const [tokenDrafts, setTokenDrafts] = useState({ secondaryColors: "", styleTags: "" });
   const [saving, setSaving] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -127,7 +124,10 @@ export function ItemEditor({
     Array.isArray(value) ? value.length > 0 : Boolean(value),
   );
   const [detailsOpen, setDetailsOpen] = useState(canUseAi || hasDetails || isAnalyzing);
-  const isDirty = !detailsMatch(data, savedData);
+  const hasTokenDrafts = Boolean(
+    tokenDrafts.secondaryColors.trim() || tokenDrafts.styleTags.trim(),
+  );
+  const isDirty = !detailsMatch(data, savedData) || hasTokenDrafts;
   const visibleError =
     error ||
     (item.analysisStatus === "failed"
@@ -137,10 +137,12 @@ export function ItemEditor({
   useEffect(() => {
     if (lastItemVersion.current === item.updatedAt) return;
     const nextDetails = editableDetails(item);
-    setData((current) => (detailsMatch(current, savedData) ? nextDetails : current));
+    setData((current) =>
+      detailsMatch(current, savedData) && !hasTokenDrafts ? nextDetails : current,
+    );
     setSavedData(nextDetails);
     lastItemVersion.current = item.updatedAt;
-  }, [item, savedData]);
+  }, [item, savedData, hasTokenDrafts]);
 
   useEffect(() => {
     if (isAnalyzing) trackAnalysis(item.id);
@@ -151,9 +153,26 @@ export function ItemEditor({
     setData((previous) => ({ ...previous, [key]: value }));
   }
 
-  function setList(key: ListDetail, value: string) {
+  function setTokenValues(key: "secondaryColors" | "styleTags", values: string[]) {
     setNotice("");
-    setData((previous) => ({ ...previous, [key]: commaSeparated(value) }));
+    setData((previous) => ({ ...previous, [key]: values }));
+  }
+
+  function toggleSeason(season: string) {
+    setNotice("");
+    setData((previous) => {
+      const selected = previous.seasons.some(
+        (value) => value.toLocaleLowerCase() === season.toLocaleLowerCase(),
+      );
+      return {
+        ...previous,
+        seasons: selected
+          ? previous.seasons.filter(
+              (value) => value.toLocaleLowerCase() !== season.toLocaleLowerCase(),
+            )
+          : normalizeSeasons([...previous.seasons, season]),
+      };
+    });
   }
 
   async function save() {
@@ -163,8 +182,12 @@ export function ItemEditor({
     setNotice("");
     const submitted = {
       ...data,
+      secondaryColors: commitTokenDraft(data.secondaryColors, tokenDrafts.secondaryColors),
+      styleTags: commitTokenDraft(data.styleTags, tokenDrafts.styleTags, styleTagSuggestions),
       categoryGroup: data.categoryGroup ?? inferCategoryGroup(data.category),
     };
+    setData(submitted);
+    setTokenDrafts({ secondaryColors: "", styleTags: "" });
     try {
       const response = await fetch(`/api/items/${item.id}`, {
         method: "PATCH",
@@ -365,7 +388,7 @@ export function ItemEditor({
                   ?.label ?? "Set from category"}
               </div>
             </div>
-            <label className={labelClassName}>
+            <label className={`${labelClassName} sm:col-span-2`}>
               Main colour
               <input
                 className={inputClassName}
@@ -373,21 +396,21 @@ export function ItemEditor({
                 onChange={(event) => setText("primaryColor", event.target.value)}
               />
             </label>
-            <label className={labelClassName}>
-              Other colours
-              <input
-                className={inputClassName}
-                value={data.secondaryColors.join(", ")}
-                onChange={(event) => setList("secondaryColors", event.target.value)}
-                aria-describedby="secondary-colours-hint"
+            <div className="sm:col-span-2">
+              <MetadataTokenField
+                label="Other colours"
+                placeholder="Add a colour"
+                hint="Press Enter or type a comma to add it."
+                collapsible
+                addActionLabel="Add another colour"
+                values={data.secondaryColors}
+                draft={tokenDrafts.secondaryColors}
+                onValuesChange={(values) => setTokenValues("secondaryColors", values)}
+                onDraftChange={(draft) =>
+                  setTokenDrafts((previous) => ({ ...previous, secondaryColors: draft }))
+                }
               />
-              <span
-                id="secondary-colours-hint"
-                className="mt-1 block text-xs font-normal text-ink/50"
-              >
-                Separate multiple colours with commas.
-              </span>
-            </label>
+            </div>
             <label className={labelClassName}>
               Material
               <input
@@ -422,30 +445,47 @@ export function ItemEditor({
                 ))}
               </select>
             </label>
-            <label className={labelClassName}>
-              Style tags
-              <input
-                className={inputClassName}
-                value={data.styleTags.join(", ")}
-                onChange={(event) => setList("styleTags", event.target.value)}
-                aria-describedby="style-tags-hint"
-              />
-              <span id="style-tags-hint" className="mt-1 block text-xs font-normal text-ink/50">
-                Separate multiple tags with commas.
-              </span>
-            </label>
-            <label className={labelClassName}>
-              Seasons
-              <input
-                className={inputClassName}
-                value={data.seasons.join(", ")}
-                onChange={(event) => setList("seasons", event.target.value)}
-                aria-describedby="seasons-hint"
-              />
-              <span id="seasons-hint" className="mt-1 block text-xs font-normal text-ink/50">
-                Separate multiple seasons with commas.
-              </span>
-            </label>
+          </div>
+          <div className="space-y-5">
+            <MetadataTokenField
+              label="Style tags"
+              placeholder="Add a tag"
+              hint="Press Enter or type a comma to add it."
+              values={data.styleTags}
+              draft={tokenDrafts.styleTags}
+              suggestions={styleTagSuggestions}
+              onValuesChange={(values) => setTokenValues("styleTags", values)}
+              onDraftChange={(draft) =>
+                setTokenDrafts((previous) => ({ ...previous, styleTags: draft }))
+              }
+            />
+            <fieldset>
+              <legend className={labelClassName}>Seasons</legend>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {[
+                  ...seasonValues,
+                  ...data.seasons.filter((season) => !seasonValues.includes(season as never)),
+                ].map((season) => {
+                  const selected = data.seasons.some(
+                    (value) => value.toLocaleLowerCase() === season.toLocaleLowerCase(),
+                  );
+                  return (
+                    <label
+                      key={season.toLocaleLowerCase()}
+                      className={`cursor-pointer rounded-full border px-3 py-2 text-sm font-bold transition ${selected ? "border-teal bg-teal text-canvas" : "border-line bg-canvas text-ink/65"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleSeason(season)}
+                        className="sr-only"
+                      />
+                      {season}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
           <div>
             <Button className="w-full" onClick={save} disabled={saving || !isDirty}>
