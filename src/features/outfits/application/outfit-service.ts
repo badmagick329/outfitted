@@ -9,28 +9,13 @@ import type {
 import { canonicalOutfitItemIds, outfitSignature } from "../domain/outfit-signature";
 import type { OutfitAi, OutfitAiUsageRecorder, OutfitStyleProfileReader } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
+import {
+  recentSuggestionUsageByItemId,
+  selectLeastRepetitiveCandidate,
+  validOutfitCandidates,
+} from "./outfit-candidate-selection";
 
 const recentSuggestionHistoryLimit = 20;
-
-type RecentSuggestionUsage = {
-  recentSuggestionCount: number;
-  lastSuggestedPosition: number | null;
-};
-
-function recentSuggestionUsageByItemId(history: string[][]) {
-  const usageByItemId = new Map<string, RecentSuggestionUsage>();
-  for (const [position, itemIds] of history.entries()) {
-    for (const itemId of new Set(itemIds)) {
-      const usage = usageByItemId.get(itemId);
-      if (usage) {
-        usage.recentSuggestionCount += 1;
-      } else {
-        usageByItemId.set(itemId, { recentSuggestionCount: 1, lastSuggestedPosition: position });
-      }
-    }
-  }
-  return usageByItemId;
-}
 
 export class OutfitService {
   constructor(
@@ -101,28 +86,41 @@ export class OutfitService {
             excludedOutfitItemIds,
           ),
       });
-    let result = await suggest(false);
     const allowedIds = new Set(items.map((item) => item.id));
-    const sanitizeItemIds = (itemIds: string[]) =>
-      itemIds.filter((id, index) => allowedIds.has(id) && itemIds.indexOf(id) === index);
     const excludedSignatures = new Set(excludedOutfitItemIds.map(outfitSignature));
-    let referencedItemIds = sanitizeItemIds(result.referencedItemIds);
-    if (referencedItemIds.length && excludedSignatures.has(outfitSignature(referencedItemIds))) {
-      result = await suggest(true);
-      referencedItemIds = sanitizeItemIds(result.referencedItemIds);
-    }
-    if (!referencedItemIds.length)
-      throw conflict("We couldn’t form an outfit from the available garments.");
-    if (excludedSignatures.has(outfitSignature(referencedItemIds)))
+    let candidates = validOutfitCandidates(
+      (await suggest(false)).candidates,
+      allowedIds,
+      excludedSignatures,
+      selected?.id,
+    );
+    if (!candidates.length)
+      candidates = validOutfitCandidates(
+        (await suggest(true)).candidates,
+        allowedIds,
+        excludedSignatures,
+        selected?.id,
+      );
+    if (!candidates.length)
       throw conflict("There isn’t a different outfit to suggest from the available garments.");
+    const result = selectLeastRepetitiveCandidate(
+      candidates,
+      recentSuggestionItemIds,
+      selected?.id,
+    );
     const suggestion = await this.repository.createSuggestion({
       ownerId,
       request: input.prompt,
-      selectedItemIds: referencedItemIds,
+      selectedItemIds: result.referencedItemIds,
       recommendation: result.recommendation,
       rationale: result.rationale,
     });
-    return { ...suggestion, referencedItemIds };
+    return {
+      ...suggestion,
+      recommendation: result.recommendation,
+      rationale: result.rationale,
+      referencedItemIds: result.referencedItemIds,
+    };
   }
 
   listSaved(ownerId: string) {

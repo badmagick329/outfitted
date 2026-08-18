@@ -39,12 +39,16 @@ export type GarmentAnalysisResult = z.infer<typeof analysisSchema>;
 export type WardrobeAnalysis = GarmentAnalysisResult & {
   categoryGroup: import("@/features/wardrobe/domain/category-groups").CategoryGroup;
 };
-export type OutfitSuggestion = z.infer<typeof outfitSuggestionSchema>;
-export const outfitSuggestionSchema = z.object({
+export const outfitSuggestionCandidateSchema = z.object({
   recommendation: z.string(),
   rationale: z.string(),
   referencedItemIds: z.array(z.string().uuid()),
 });
+export const outfitSuggestionBatchSchema = z.object({
+  candidates: z.array(outfitSuggestionCandidateSchema).min(1).max(4),
+});
+export type OutfitSuggestionCandidate = z.infer<typeof outfitSuggestionCandidateSchema>;
+export type OutfitSuggestionBatch = z.infer<typeof outfitSuggestionBatchSchema>;
 
 export interface AiWardrobeProvider {
   readonly model: string;
@@ -57,7 +61,7 @@ export interface AiWardrobeProvider {
     wardrobe: unknown[],
     styleProfile?: StyleProfile | null,
     excludedOutfitItemIds?: string[][],
-  ): Promise<AiCallResult<OutfitSuggestion>>;
+  ): Promise<AiCallResult<OutfitSuggestionBatch>>;
   review(
     wardrobe: WardrobeReviewSourceItem[],
     styleProfile?: StyleProfile | null,
@@ -123,14 +127,14 @@ class OpenAiWardrobeProvider implements AiWardrobeProvider {
       text: {
         format: {
           type: "json_schema",
-          name: "outfit_suggestion",
+          name: "outfit_suggestion_batch",
           strict: true,
-          schema: z.toJSONSchema(outfitSuggestionSchema),
+          schema: z.toJSONSchema(outfitSuggestionBatchSchema),
         },
       },
     });
     return {
-      data: outfitSuggestionSchema.parse(JSON.parse(response.output_text)),
+      data: outfitSuggestionBatchSchema.parse(JSON.parse(response.output_text)),
       model: this.model,
       providerRequestId: response.id,
       usage: {

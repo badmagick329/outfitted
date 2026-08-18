@@ -4,6 +4,7 @@ import {
   buildOutfitSuggestionPrompt,
   buildWardrobeReviewPrompt,
 } from "./ai-prompts";
+import { outfitSuggestionBatchSchema } from "./ai";
 
 describe("garment analysis instructions", () => {
   const garmentAnalysisInstructions = buildGarmentAnalysisPrompt();
@@ -56,17 +57,22 @@ describe("garment analysis instructions", () => {
 });
 
 describe("buildOutfitSuggestionPrompt", () => {
-  it("asks for one coherent outfit rather than a collection of suggestions", () => {
+  it("asks for a varied set of independently suitable outfit candidates", () => {
     const prompt = buildOutfitSuggestionPrompt("A relaxed Saturday", [
       { id: "7c1bcc30-61e7-4b82-bb99-bd73f33d926d", name: "Teal shirt" },
     ]);
 
-    expect(prompt).toContain("one complete, coherent outfit");
-    expect(prompt).toContain("Do not return a collection of merely relevant items");
-    expect(prompt).toContain("referencedItemIds must contain every garment");
-    expect(prompt).toContain("identify the plausible candidates for each role");
+    expect(prompt).toContain("set of one to four independently recommendation-worthy outfits");
+    expect(prompt).toContain("Do not include filler merely to reach four candidates");
+    expect(prompt).toContain("Maximise meaningful garment variation across the candidate set");
+    expect(prompt).toContain("do not build every candidate around the same dominant top");
+    expect(prompt).toContain("Each candidate's referencedItemIds must contain every garment");
+    expect(prompt).toContain("identify plausible candidates for each role");
+    expect(prompt).toContain("All candidates must include an explicitly selected garment");
+    expect(prompt).toContain("Markdown link in exactly this format");
     expect(prompt).toContain("treat input order as arbitrary");
     expect(prompt).toContain("A relaxed Saturday");
+    expect(prompt).not.toContain("strongest");
     expect(prompt).not.toContain("USER STYLE PROFILE");
     expect(prompt).not.toContain("OUTFITS ALREADY SAVED OR IGNORED");
   });
@@ -85,19 +91,30 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("current request and any explicitly selected garment take priority");
   });
 
-  it("strongly deprioritises garments from the immediately previous suggestion", () => {
+  it("uses recent garment use as soft guidance for a varied candidate set", () => {
     const prompt = buildOutfitSuggestionPrompt("Dinner", []);
 
-    expect(prompt).toContain("Recent suggestion information is a strong soft preference");
-    expect(prompt).toContain("lastSuggestedPosition 0");
-    expect(prompt).toContain("treat reusing it as exceptional");
-    expect(prompt).toContain("clear, specific material advantage");
-    expect(prompt).toContain("recentSuggestionCount of 0");
-    expect(prompt).toContain(
-      "lower lastSuggestedPosition means the garment was used more recently",
-    );
+    expect(prompt).toContain("Recent suggestion information is soft guidance");
+    expect(prompt).toContain("recentSuggestionCount 0");
+    expect(prompt).toContain("a lower lastSuggestedPosition means it was used more recently");
     expect(prompt).toContain("Never treat recent use as a hard exclusion");
     expect(prompt).toContain("explicitly selected garment");
+  });
+
+  it("requires a non-empty batch of at most four candidates", () => {
+    const candidate = {
+      recommendation: "Wear the shirt",
+      rationale: "It works",
+      referencedItemIds: ["7c1bcc30-61e7-4b82-bb99-bd73f33d926d"],
+    };
+
+    expect(outfitSuggestionBatchSchema.parse({ candidates: [candidate] }).candidates).toHaveLength(
+      1,
+    );
+    expect(() => outfitSuggestionBatchSchema.parse({ candidates: [] })).toThrow();
+    expect(() =>
+      outfitSuggestionBatchSchema.parse({ candidates: Array(5).fill(candidate) }),
+    ).toThrow();
   });
 
   it("excludes saved and ignored garment combinations by ID without banning individual items", () => {
