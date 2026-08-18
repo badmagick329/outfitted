@@ -85,10 +85,13 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("current request and any explicitly selected garment take priority");
   });
 
-  it("uses recent garment use as a soft diversity preference", () => {
+  it("strongly deprioritises garments from the immediately previous suggestion", () => {
     const prompt = buildOutfitSuggestionPrompt("Dinner", []);
 
-    expect(prompt).toContain("Recent suggestion information is soft preference data");
+    expect(prompt).toContain("Recent suggestion information is a strong soft preference");
+    expect(prompt).toContain("lastSuggestedPosition 0");
+    expect(prompt).toContain("treat reusing it as exceptional");
+    expect(prompt).toContain("clear, specific material advantage");
     expect(prompt).toContain("recentSuggestionCount of 0");
     expect(prompt).toContain(
       "lower lastSuggestedPosition means the garment was used more recently",
