@@ -19,11 +19,12 @@ export class OutfitService {
   ) {}
 
   async create(ownerId: string, input: CreateOutfitSuggestionInput) {
-    const [items, styleProfile, excludedOutfitItemIds] = await Promise.all([
+    const [activeItems, styleProfile, excludedOutfitItemIds] = await Promise.all([
       this.repository.listActiveWardrobe(ownerId),
       this.styleProfiles?.find(ownerId) ?? Promise.resolve(null),
       this.repository.listExcludedItemIds(ownerId),
     ]);
+    const items = activeItems.filter((item) => !item.excludedFromOutfitSuggestions);
     if (input.selectedItemId && !items.some((item) => item.id === input.selectedItemId))
       throw notFound("Selected garment not found");
     const selected = input.selectedItemId

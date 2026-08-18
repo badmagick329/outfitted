@@ -11,7 +11,7 @@ import {
   type CategoryGroup,
 } from "@/features/wardrobe/domain/category-groups";
 import {
-  matchesWardrobeFilters,
+  filterWardrobeItems,
   wardrobeScrollKey,
   wardrobeUrl,
   type WardrobeFacet,
@@ -42,7 +42,7 @@ export function WardrobeGrid({
   const [filters, setFilters] = useState(initialFilters);
   const [open, setOpen] = useState(false);
   const currentUrl = wardrobeUrl(filters);
-  const shown = items.filter((item) => matchesWardrobeFilters(item, filters));
+  const shown = filterWardrobeItems(items, filters);
   const detailedFilterCount = filters.categories.length + filters.tags.length;
   const hasActiveFilters = filters.section !== null || detailedFilterCount > 0;
   const sectionLabel = quickCategoryGroupOptions.find(

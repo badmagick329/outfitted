@@ -7,7 +7,7 @@ import { outfitService } from "@/features/outfits/server";
 import { getStyleProfile } from "@/features/style-profile/server";
 import { wardrobeService } from "@/features/wardrobe/server";
 
-export default async function OutfitsPage() {
+export default async function OutfitsPage({ searchParams }: PageProps<"/outfits">) {
   const access = await requireActiveUser();
   if (!access.canUseAi) redirect("/wardrobe");
   const [items, archivedItems, savedOutfits, styleProfile] = await Promise.all([
@@ -22,6 +22,13 @@ export default async function OutfitsPage() {
     category,
     coverPhotoId,
   });
+  const requestedItemId = (await searchParams).item;
+  const initialStartingItem =
+    typeof requestedItemId === "string"
+      ? (items.find((item) => item.id === requestedItemId && !item.excludedFromOutfitSuggestions) ??
+        null)
+      : null;
+  const eligibleItems = items.filter((item) => !item.excludedFromOutfitSuggestions);
 
   return (
     <>
@@ -32,9 +39,10 @@ export default async function OutfitsPage() {
         tone="mist"
       />
       <OutfitDesk
-        items={items.map(toOutfitItem)}
+        items={eligibleItems.map(toOutfitItem)}
         catalogueItems={[...items, ...archivedItems].map(toOutfitItem)}
         hasStyleProfile={Boolean(styleProfile)}
+        initialStartingItem={initialStartingItem ? toOutfitItem(initialStartingItem) : null}
         initialSavedOutfits={savedOutfits.map(({ saved, suggestion }) => ({
           id: saved.id,
           suggestionId: saved.suggestionId,

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterWardrobeItems,
   matchesWardrobeFilters,
   parseWardrobeFilters,
+  parseWardrobeReturnTo,
   validatedWardrobeReturnTo,
   wardrobeFacets,
+  wardrobeItemNavigation,
   wardrobeScrollKey,
 } from "./filters";
 
@@ -112,5 +115,31 @@ describe("wardrobe filters", () => {
     expect(wardrobeScrollKey("/wardrobe?section=tops")).not.toBe(
       wardrobeScrollKey("/wardrobe?section=bottoms"),
     );
+  });
+
+  it("reuses wardrobe filters to build non-wrapping garment navigation", () => {
+    const activeItems = [
+      { id: "one", category: "T-shirt", categoryGroup: "tops", styleTags: ["Casual"] },
+      { id: "two", category: "Shirt", categoryGroup: "tops", styleTags: ["Smart"] },
+      { id: "three", category: "Jeans", categoryGroup: "bottoms", styleTags: ["Casual"] },
+    ];
+    const filtered = filterWardrobeItems(
+      activeItems,
+      parseWardrobeReturnTo("/wardrobe?section=tops", wardrobeFacets(activeItems)),
+    );
+
+    expect(filtered.map((item) => item.id)).toEqual(["one", "two"]);
+    expect(wardrobeItemNavigation(filtered, "one")).toEqual({
+      index: 0,
+      total: 2,
+      previousItemId: null,
+      nextItemId: "two",
+    });
+    expect(wardrobeItemNavigation(filtered, "two")).toEqual({
+      index: 1,
+      total: 2,
+      previousItemId: "one",
+      nextItemId: null,
+    });
   });
 });

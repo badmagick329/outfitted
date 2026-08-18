@@ -3,6 +3,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import {
   ArrowLeftRight,
@@ -17,7 +18,10 @@ import {
 } from "lucide-react";
 import { ImageViewerDialog, type ViewerImage } from "@/components/image-viewer-dialog";
 import { Button } from "@/components/ui/button";
-import { replaceOutfitRecommendationItem } from "@/features/outfits/domain/outfit-edit";
+import {
+  removeOutfitItem,
+  replaceOutfitRecommendationItem,
+} from "@/features/outfits/domain/outfit-edit";
 
 type Item = {
   id: string;
@@ -194,11 +198,13 @@ function EditableOutfitGarments({
   items,
   disabled,
   onSwapRequest,
+  onRemove,
 }: {
   itemIds: string[];
   items: Item[];
   disabled: boolean;
   onSwapRequest: (itemId: string) => void;
+  onRemove: (itemId: string) => void;
 }) {
   const [selectedPreview, setSelectedPreview] = useState<number | null>(null);
   const itemById = new Map(items.map((item) => [item.id, item]));
@@ -260,20 +266,37 @@ function EditableOutfitGarments({
                   <span className="mt-1 block text-xs text-ink/55">{item.category}</span>
                 )}
               </div>
-              {hasAlternatives && (
-                <div className="mt-auto border-t border-line p-2">
-                  <Button
-                    className="w-full"
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={disabled}
-                    onClick={() => onSwapRequest(item.id)}
-                  >
-                    <ArrowLeftRight size={14} aria-hidden="true" />
-                    Swap
-                  </Button>
-                </div>
+              <div className="mt-auto grid grid-cols-2 gap-1 border-t border-line p-2">
+                <Button
+                  className="w-full"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={disabled || !hasAlternatives}
+                  onClick={() => onSwapRequest(item.id)}
+                  aria-label={`Swap ${accessibleName}`}
+                >
+                  <ArrowLeftRight size={14} aria-hidden="true" />
+                  Swap
+                </Button>
+                <Button
+                  className="w-full text-red-700 hover:bg-red-50 hover:text-red-700"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={disabled || itemIds.length <= 1}
+                  onClick={() => onRemove(item.id)}
+                  aria-label={`Remove ${accessibleName} from this outfit`}
+                  aria-describedby={itemIds.length <= 1 ? "outfit-minimum-garment" : undefined}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Remove
+                </Button>
+              </div>
+              {itemIds.length <= 1 && (
+                <span id="outfit-minimum-garment" className="sr-only">
+                  An outfit needs at least one garment.
+                </span>
               )}
             </article>
           );
@@ -368,7 +391,8 @@ function EditableOutfitExplanation({
   referencedItemIds,
   editing,
   disabled,
-  onChange,
+  onRecommendationChange,
+  onRationaleChange,
   onEditingChange,
 }: {
   recommendation: string;
@@ -376,21 +400,15 @@ function EditableOutfitExplanation({
   referencedItemIds: string[];
   editing: boolean;
   disabled: boolean;
-  onChange: (value: string) => void;
+  onRecommendationChange: (value: string) => void;
+  onRationaleChange: (value: string) => void;
   onEditingChange: (editing: boolean) => void;
 }) {
   return (
     <>
-      <div className="prose prose-sm mt-6 max-w-none text-ink prose-headings:font-display prose-p:leading-7 prose-li:my-2">
-        <Recommendation
-          content={recommendation}
-          referencedItemIds={referencedItemIds}
-          linkItems={false}
-        />
-      </div>
-      <div className="mt-6 border-t border-line pt-5">
+      <div className="mt-6">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Why this works</h3>
+          <h3 className="text-sm font-bold">How to wear it</h3>
           <Button
             type="button"
             variant="ghost"
@@ -403,16 +421,40 @@ function EditableOutfitExplanation({
             ) : (
               <Pencil size={14} aria-hidden="true" />
             )}
-            {editing ? "Done" : "Edit why"}
+            {editing ? "Done" : "Edit outfit"}
           </Button>
         </div>
+        {editing ? (
+          <label className="mt-3 block">
+            <span className="sr-only">How to wear this outfit</span>
+            <textarea
+              className={fieldClassName}
+              value={recommendation}
+              onChange={(event) => onRecommendationChange(event.target.value)}
+              rows={6}
+              maxLength={5000}
+              disabled={disabled}
+            />
+          </label>
+        ) : (
+          <div className="prose prose-sm mt-3 max-w-none text-ink prose-headings:font-display prose-p:leading-7 prose-li:my-2">
+            <Recommendation
+              content={recommendation}
+              referencedItemIds={referencedItemIds}
+              linkItems={false}
+            />
+          </div>
+        )}
+      </div>
+      <div className="mt-6 border-t border-line pt-5">
+        <h3 className="text-sm font-bold">Why this works</h3>
         {editing ? (
           <label className="mt-3 block">
             <span className="sr-only">Why this outfit works</span>
             <textarea
               className={fieldClassName}
               value={rationale ?? ""}
-              onChange={(event) => onChange(event.target.value)}
+              onChange={(event) => onRationaleChange(event.target.value)}
               rows={4}
               maxLength={3000}
               disabled={disabled}
@@ -456,17 +498,20 @@ export function OutfitDesk({
   items,
   catalogueItems,
   hasStyleProfile,
+  initialStartingItem,
   initialSavedOutfits,
 }: {
   items: Item[];
   catalogueItems: Item[];
   hasStyleProfile: boolean;
+  initialStartingItem: Item | null;
   initialSavedOutfits: SavedOutfit[];
 }) {
+  const router = useRouter();
   const promptField = useRef<HTMLTextAreaElement>(null);
   const [prompt, setPrompt] = useState("");
   const [promptNotice, setPromptNotice] = useState("");
-  const [selectedItemId, setSelectedItemId] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState(initialStartingItem?.id ?? "");
   const [result, setResult] = useState<Result | null>(null);
   const [resultName, setResultName] = useState("");
   const [savedOutfits, setSavedOutfits] = useState(initialSavedOutfits);
@@ -619,6 +664,23 @@ export function OutfitDesk({
     setEditNotice(`${itemLabel(replacement)} added. Review why the updated outfit works.`);
   }
 
+  function removeGarment(itemId: string) {
+    if (!result || saving || ignoring || saved || result.referencedItemIds.length <= 1) return;
+    setResult((current) =>
+      current
+        ? { ...current, referencedItemIds: removeOutfitItem(current.referencedItemIds, itemId) }
+        : current,
+    );
+    if (swappingItemId === itemId) setSwappingItemId(null);
+    setEditingRationale(true);
+    setEditNotice("Garment removed. Review how to wear the updated outfit and why it works.");
+  }
+
+  function removeStartingConstraint() {
+    setSelectedItemId("");
+    router.replace("/outfits", { scroll: false });
+  }
+
   async function removeSaved(outfitId: string) {
     setRemovingId(outfitId);
     setRemoveErrors((current) => ({ ...current, [outfitId]: "" }));
@@ -681,26 +743,64 @@ export function OutfitDesk({
                 required
               />
             </label>
+            <p className="mt-2 text-sm leading-6 text-ink/60">
+              Include the style, mood or dress code you want for this outfit.
+            </p>
             <p className="sr-only" role="status" aria-live="polite">
               {promptNotice}
             </p>
-            <label className="mt-5 block text-sm font-bold">
-              Start with a particular garment{" "}
-              <span className="font-normal text-ink/55">optional</span>
-              <select
-                className={fieldClassName}
-                value={selectedItemId}
-                onChange={(event) => setSelectedItemId(event.target.value)}
+            {selectedItemId && initialStartingItem ? (
+              <section
+                className="mt-5 rounded-xl border border-teal/20 bg-mist/55 p-3"
+                aria-label="Starting garment"
               >
-                <option value="">No preference</option>
-                {items.map((item, index) => (
-                  <option value={item.id} key={item.id}>
-                    {item.name || item.category || `Garment ${index + 1}`}
-                    {item.name && item.category ? ` · ${item.category}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <div className="flex items-center gap-3">
+                  {initialStartingItem.coverPhotoId ? (
+                    <img
+                      src={`/api/photos/${initialStartingItem.coverPhotoId}?variant=thumbnail`}
+                      alt=""
+                      className="size-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-12 place-items-center rounded-lg bg-canvas text-teal/45">
+                      <Shirt size={20} aria-hidden="true" />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="block font-mono text-[10px] font-bold uppercase tracking-wide text-teal">
+                      Starting with
+                    </span>
+                    <strong className="block truncate text-sm">
+                      {itemLabel(initialStartingItem)}
+                    </strong>
+                    {initialStartingItem.category && (
+                      <span className="block truncate text-xs text-ink/55">
+                        {initialStartingItem.category}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeStartingConstraint}
+                  >
+                    <X size={14} aria-hidden="true" /> Remove
+                  </Button>
+                </div>
+              </section>
+            ) : (
+              <p className="mt-5 text-sm leading-6 text-ink/60">
+                Want to build around a particular piece?{" "}
+                <Link
+                  className="font-bold text-teal underline-offset-4 hover:underline"
+                  href="/wardrobe"
+                >
+                  Open it from your wardrobe
+                </Link>{" "}
+                and choose “Build an outfit around this”.
+              </p>
+            )}
             <div className="mt-5 rounded-xl border border-teal/15 bg-mist/55 px-4 py-3 text-sm leading-6 text-ink/65">
               {hasStyleProfile ? (
                 <>
@@ -753,6 +853,7 @@ export function OutfitDesk({
                       setSwappingItemId(itemId);
                       setEditNotice("");
                     }}
+                    onRemove={removeGarment}
                   />
                 )}
                 {!saved && swappingItemId && (
@@ -782,7 +883,11 @@ export function OutfitDesk({
                     editing={editingRationale}
                     disabled={saving || ignoring}
                     onEditingChange={setEditingRationale}
-                    onChange={(rationale) => {
+                    onRecommendationChange={(recommendation) => {
+                      setResult((current) => (current ? { ...current, recommendation } : current));
+                      setEditNotice("");
+                    }}
+                    onRationaleChange={(rationale) => {
                       setResult((current) => (current ? { ...current, rationale } : current));
                       setEditNotice("");
                     }}

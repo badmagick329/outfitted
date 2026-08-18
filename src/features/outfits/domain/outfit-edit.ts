@@ -17,3 +17,8 @@ export function replaceOutfitRecommendationItem(
     `[${markdownLabel(replacementLabel)}](item:${replacementItemId})`,
   );
 }
+
+export function removeOutfitItem(itemIds: string[], itemId: string) {
+  if (itemIds.length <= 1) return itemIds;
+  return itemIds.filter((currentItemId) => currentItemId !== itemId);
+}

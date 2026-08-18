@@ -17,6 +17,7 @@ const item = {
   formality: null,
   confidence: [],
   analysisStatus: "complete",
+  excludedFromOutfitSuggestions: false,
 };
 
 function aiResult<T>(data: T) {
@@ -57,6 +58,36 @@ describe("OutfitService.create", () => {
     expect(repository.createSuggestion).toHaveBeenCalledWith(
       expect.objectContaining({ selectedItemIds: ["item-1"] }),
     );
+  });
+
+  it("never sends excluded garments to AI or accepts one as a starting garment", async () => {
+    const excludedItem = { ...item, id: "excluded-item", excludedFromOutfitSuggestions: true };
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item, excludedItem]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Try the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1"],
+        }),
+      ),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
+    expect(ai.suggest).toHaveBeenCalledWith(
+      expect.any(String),
+      [expect.objectContaining({ id: "item-1" })],
+      null,
+      [],
+    );
+    await expect(
+      service.create("user-1", { prompt: "A dinner", selectedItemId: "excluded-item" }),
+    ).rejects.toMatchObject({ status: 404 });
   });
 
   it("identifies a garment the user requires by both ID and name", async () => {

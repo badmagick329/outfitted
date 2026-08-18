@@ -42,6 +42,7 @@ type Item = {
   seasons: string[];
   analysisStatus: string;
   analysisError: string | null;
+  excludedFromOutfitSuggestions: boolean;
   archivedAt: string | null;
   updatedAt: string;
 };
@@ -112,6 +113,10 @@ export function ItemEditor({
   const [savedData, setSavedData] = useState(initialDetails);
   const [tokenDrafts, setTokenDrafts] = useState({ secondaryColors: "", styleTags: "" });
   const [saving, setSaving] = useState(false);
+  const [updatingOutfitExclusion, setUpdatingOutfitExclusion] = useState(false);
+  const [excludedFromOutfitSuggestions, setExcludedFromOutfitSuggestions] = useState(
+    item.excludedFromOutfitSuggestions,
+  );
   const [retrying, setRetrying] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -228,6 +233,33 @@ export function ItemEditor({
     }
   }
 
+  async function changeOutfitExclusion() {
+    const next = !excludedFromOutfitSuggestions;
+    setExcludedFromOutfitSuggestions(next);
+    setUpdatingOutfitExclusion(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ excludedFromOutfitSuggestions: next }),
+      });
+      if (!response.ok) {
+        setExcludedFromOutfitSuggestions(!next);
+        setError(await messageFrom(response, "Couldn’t update Outfit Desk availability."));
+        return;
+      }
+      setNotice(next ? "Excluded from Outfit Desk." : "Available in Outfit Desk again.");
+      router.refresh();
+    } catch {
+      setExcludedFromOutfitSuggestions(!next);
+      setError("Couldn’t update Outfit Desk availability. Check your connection and try again.");
+    } finally {
+      setUpdatingOutfitExclusion(false);
+    }
+  }
+
   async function changeArchive() {
     setArchiving(true);
     setError("");
@@ -336,6 +368,12 @@ export function ItemEditor({
         </div>
       ) : detailsOpen ? (
         <div className="mt-6 space-y-5">
+          {canUseAi && (
+            <p className="rounded-xl border border-teal/15 bg-mist/55 px-4 py-3 text-sm leading-6 text-ink/65">
+              Outfit Desk uses these details to understand the garment. Keeping the description,
+              colours and style tags accurate helps it make better suggestions.
+            </p>
+          )}
           <label className={labelClassName}>
             Name
             <input
@@ -500,6 +538,32 @@ export function ItemEditor({
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-5">
+        {canUseAi && (
+          <label className="flex max-w-md items-start gap-3 rounded-xl border border-line bg-mist/45 px-3 py-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1 size-4 accent-teal"
+              checked={excludedFromOutfitSuggestions}
+              disabled={updatingOutfitExclusion}
+              onChange={() => void changeOutfitExclusion()}
+            />
+            <span>
+              <strong className="block">Exclude from outfit suggestions</strong>
+              <span className="mt-0.5 block text-xs leading-5 text-ink/60">
+                Outfit Desk won’t use this garment in future suggestions. It will remain in your
+                wardrobe.
+              </span>
+              {updatingOutfitExclusion && (
+                <span className="mt-1 block text-xs font-bold text-teal">Saving…</span>
+              )}
+              {!updatingOutfitExclusion && excludedFromOutfitSuggestions && (
+                <span className="mt-1 block text-xs font-bold text-ink/60">
+                  Excluded from Outfit Desk
+                </span>
+              )}
+            </span>
+          </label>
+        )}
         <Button variant="ghost" size="sm" onClick={changeArchive} disabled={archiving || deleting}>
           {archiving ? (
             <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
