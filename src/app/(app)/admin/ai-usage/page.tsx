@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminSectionNavigation } from "@/components/admin-section-navigation";
 import { AiUsageChart } from "@/components/ai-usage-chart";
+import { AiUsageMemberSelect } from "@/components/ai-usage-member-select";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { getAiUsageDashboard, type AiUsageRange } from "@/features/ai-usage/server";
 import { requireAdminUser } from "@/features/access/server";
@@ -54,31 +55,12 @@ export default async function AiUsagePage({
             <h2 className="text-2xl font-bold tracking-[-0.04em]">Last {range} days</h2>
             <p className="mt-1 text-sm text-ink/60">Showing {selectedLabel}.</p>
           </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <form action="/admin/ai-usage" className="flex items-end gap-2">
-              <input type="hidden" name="range" value={range} />
-              <label className="text-xs font-bold text-ink/70">
-                Member
-                <select
-                  name="user"
-                  defaultValue={selectedUser?.id ?? ""}
-                  className="mt-1 block max-w-64 rounded-full border border-line bg-canvas px-3 py-1.5 text-sm font-normal outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
-                >
-                  <option value="">All members</option>
-                  {managedUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name ? `${user.name} (${user.email})` : user.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                className="rounded-full border border-teal/30 bg-canvas px-3 py-1.5 text-xs font-bold text-teal hover:border-teal"
-              >
-                Apply
-              </button>
-            </form>
+          <div className="flex flex-wrap items-center gap-3">
+            <AiUsageMemberSelect
+              range={range}
+              selectedUserId={selectedUser?.id ?? null}
+              members={managedUsers}
+            />
             <nav
               className="flex rounded-full border border-line bg-canvas p-1"
               aria-label="Usage period"
