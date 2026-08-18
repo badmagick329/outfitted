@@ -50,6 +50,20 @@ export function parseWardrobeFilters(
     tags: values(query.tag).filter((value) => tags.has(key(value))),
   };
 }
+export function parseWardrobeReturnTo(returnTo: string, facets: ReturnType<typeof wardrobeFacets>) {
+  const url = new URL(returnTo, "https://outfitted.invalid");
+  const query: Query = {};
+  for (const [name, value] of url.searchParams) {
+    const current = query[name];
+    query[name] =
+      current === undefined
+        ? value
+        : Array.isArray(current)
+          ? [...current, value]
+          : [current, value];
+  }
+  return parseWardrobeFilters(query, facets);
+}
 export function serializeWardrobeFilters(filters: WardrobeFilters) {
   const params = new URLSearchParams();
   if (filters.section) params.set("section", filters.section);
@@ -79,6 +93,28 @@ export function matchesWardrobeFilters(
     !filters.tags.length ||
     filters.tags.some((value) => item.styleTags.some((tag) => key(tag) === key(value)))
   );
+}
+export function filterWardrobeItems<
+  T extends {
+    category: string | null;
+    categoryGroup: string | null;
+    styleTags: string[];
+  },
+>(items: T[], filters: WardrobeFilters) {
+  return items.filter((item) => matchesWardrobeFilters(item, filters));
+}
+export function wardrobeItemNavigation<T extends { id: string }>(
+  items: T[],
+  currentItemId: string,
+) {
+  const index = items.findIndex((item) => item.id === currentItemId);
+  if (index < 0) return null;
+  return {
+    index,
+    total: items.length,
+    previousItemId: items[index - 1]?.id ?? null,
+    nextItemId: items[index + 1]?.id ?? null,
+  };
 }
 export function wardrobeUrl(filters: WardrobeFilters) {
   const query = serializeWardrobeFilters(filters);

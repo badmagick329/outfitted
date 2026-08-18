@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { replaceOutfitRecommendationItem } from "./outfit-edit";
+import { removeOutfitItem, replaceOutfitRecommendationItem } from "./outfit-edit";
 
 describe("replaceOutfitRecommendationItem", () => {
   it("updates every linked mention of the swapped garment", () => {
@@ -24,5 +24,10 @@ describe("replaceOutfitRecommendationItem", () => {
         "New trousers",
       ),
     ).toBe("Wear [Tee](item:tee-id) with [New trousers](item:new-id).");
+  });
+
+  it("removes an outfit garment without changing the remaining order or final garment", () => {
+    expect(removeOutfitItem(["first", "middle", "last"], "middle")).toEqual(["first", "last"]);
+    expect(removeOutfitItem(["only"], "only")).toEqual(["only"]);
   });
 });

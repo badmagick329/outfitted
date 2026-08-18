@@ -161,6 +161,9 @@ export const wardrobeItems = pgTable("wardrobe_items", {
     .default([]),
   analysisStatus: varchar("analysis_status", { length: 24 }).notNull().default("not_requested"),
   analysisError: text("analysis_error"),
+  excludedFromOutfitSuggestions: boolean("excluded_from_outfit_suggestions")
+    .notNull()
+    .default(false),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   metadataEditedAt: timestamp("metadata_edited_at", { withTimezone: true }),
   ...timestamps,

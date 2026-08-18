@@ -5,17 +5,17 @@ import {
   wardrobeItemIdSchema,
 } from "@/features/wardrobe/domain/contracts";
 import { wardrobeService } from "@/features/wardrobe/server";
+import { forbidden } from "@/shared/application-error";
 import { routeError } from "@/shared/route-response";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/items/[id]">) {
   try {
-    const userId = (await requireActiveUser()).userId;
+    const access = await requireActiveUser();
     const { id } = await context.params;
-    await wardrobeService.update(
-      userId,
-      wardrobeItemIdSchema.parse(id),
-      updateWardrobeItemSchema.parse(await request.json()),
-    );
+    const input = updateWardrobeItemSchema.parse(await request.json());
+    if (input.excludedFromOutfitSuggestions !== undefined && !access.canUseAi)
+      throw forbidden("AI features are not enabled for your account.");
+    await wardrobeService.update(access.userId, wardrobeItemIdSchema.parse(id), input);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return routeError(error);

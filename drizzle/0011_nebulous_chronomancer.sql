@@ -1,0 +1,1 @@
+ALTER TABLE "wardrobe_items" ADD COLUMN "excluded_from_outfit_suggestions" boolean DEFAULT false NOT NULL;

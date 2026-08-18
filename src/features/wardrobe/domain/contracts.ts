@@ -52,6 +52,7 @@ export const updateWardrobeItemSchema = z
     seasons: z.array(z.string().trim().min(1).max(32)).max(8).optional(),
     formality: formalitySchema.nullable().optional(),
     archivedAt: z.string().datetime().nullable().optional(),
+    excludedFromOutfitSuggestions: z.boolean().optional(),
   })
   .strict();
 

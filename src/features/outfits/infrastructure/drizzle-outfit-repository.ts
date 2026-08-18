@@ -8,7 +8,13 @@ export class DrizzleOutfitRepository implements OutfitRepository {
     return db
       .select()
       .from(wardrobeItems)
-      .where(and(eq(wardrobeItems.userId, ownerId), isNull(wardrobeItems.archivedAt)));
+      .where(
+        and(
+          eq(wardrobeItems.userId, ownerId),
+          isNull(wardrobeItems.archivedAt),
+          eq(wardrobeItems.excludedFromOutfitSuggestions, false),
+        ),
+      );
   }
 
   async createSuggestion(input: {
