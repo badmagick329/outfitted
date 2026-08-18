@@ -16,6 +16,7 @@ export type SavedOutfitWithSuggestion = {
 
 export interface OutfitRepository {
   listActiveWardrobe(ownerId: string): Promise<OutfitWardrobeItem[]>;
+  listRecentSuggestionItemIds(ownerId: string, limit: number): Promise<string[][]>;
   createSuggestion(input: {
     ownerId: string;
     request: string;
