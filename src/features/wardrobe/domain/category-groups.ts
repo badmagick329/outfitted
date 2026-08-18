@@ -24,6 +24,61 @@ export const quickCategoryGroupOptions = categoryGroupOptions.filter(({ value })
   ["tops", "bottoms", "outerwear"].includes(value),
 );
 
+export const detailedCategoryOptions = [
+  ["T-shirt", "tops"],
+  ["Tank top", "tops"],
+  ["Polo shirt", "tops"],
+  ["Shirt", "tops"],
+  ["Blouse", "tops"],
+  ["Top", "tops"],
+  ["Sweater", "tops"],
+  ["Cardigan", "tops"],
+  ["Sweatshirt", "tops"],
+  ["Hoodie", "tops"],
+  ["Vest", "tops"],
+  ["Jeans", "bottoms"],
+  ["Trousers", "bottoms"],
+  ["Chinos", "bottoms"],
+  ["Joggers", "bottoms"],
+  ["Leggings", "bottoms"],
+  ["Shorts", "bottoms"],
+  ["Skirt", "bottoms"],
+  ["Jacket", "outerwear"],
+  ["Coat", "outerwear"],
+  ["Blazer", "outerwear"],
+  ["Overshirt", "outerwear"],
+  ["Gilet", "outerwear"],
+  ["Dress", "dresses-jumpsuits"],
+  ["Jumpsuit", "dresses-jumpsuits"],
+  ["Playsuit", "dresses-jumpsuits"],
+  ["Suit", "other"],
+  ["Activewear", "other"],
+  ["Sleepwear", "other"],
+  ["Swimwear", "other"],
+  ["Underwear", "other"],
+  ["Other garment", "other"],
+] as const satisfies ReadonlyArray<readonly [string, CategoryGroup]>;
+
+export const detailedCategoryValues = detailedCategoryOptions.map(([value]) => value) as [
+  string,
+  ...string[],
+];
+export const detailedCategorySchema = z.enum(detailedCategoryValues);
+export type DetailedCategory = z.infer<typeof detailedCategorySchema>;
+export const formalityValues = [
+  "Casual",
+  "Smart casual",
+  "Business casual",
+  "Semi-formal",
+  "Formal",
+] as const;
+export const formalitySchema = z.enum(formalityValues);
+export type Formality = z.infer<typeof formalitySchema>;
+
+export function categoryGroupForCategory(category: DetailedCategory): CategoryGroup {
+  return detailedCategoryOptions.find(([value]) => value === category)![1];
+}
+
 const categoryMatchers: Array<{ group: CategoryGroup; pattern: RegExp }> = [
   {
     group: "outerwear",

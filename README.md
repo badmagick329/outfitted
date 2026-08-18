@@ -18,4 +18,8 @@ The application and worker run directly through Bun for fast local reloads. Dock
 - `bun run db:generate`: create a migration after schema changes
 - `bun run db:migrate`: apply committed migrations
 - `bun run worker`: run the asynchronous AI processor
+- `bun run maintenance:normalize-wardrobe`: preview safe metadata cleanup; add `--apply` to write it
 - `bun run lint` / `bun run build`: validate the app
+
+Existing records are not rewritten during deployment. Run the maintenance command explicitly when
+you want safe whitespace, empty-value, case-only duplicate, and already-controlled-value cleanup.

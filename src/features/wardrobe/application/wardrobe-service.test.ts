@@ -105,3 +105,56 @@ describe("WardrobeService.create", () => {
     expect(ai.analyze).not.toHaveBeenCalled();
   });
 });
+
+describe("WardrobeService.analyze", () => {
+  it("supplies existing tags and normalizes analysis metadata before persistence", async () => {
+    const { repository, storage, jobs, ai } = dependencies();
+    Object.assign(repository, {
+      findById: vi.fn().mockResolvedValue(item),
+      setAnalysisProcessing: vi.fn().mockResolvedValue(undefined),
+      listPhotos: vi.fn().mockResolvedValue([{ storageKey: "user-1/photo.webp" }]),
+      listActive: vi.fn().mockResolvedValue([{ ...item, styleTags: ["Minimalist"] }]),
+      completeAnalysis: vi.fn().mockResolvedValue(undefined),
+      failAnalysis: vi.fn().mockResolvedValue(undefined),
+    });
+    Object.assign(storage, { read: vi.fn().mockResolvedValue(Buffer.from("image")) });
+    Object.assign(ai, {
+      analyze: vi.fn().mockResolvedValue({
+        data: {
+          name: "  Blue   tee ",
+          description: "  Soft   cotton ",
+          category: "T-shirt",
+          primaryColor: " Blue ",
+          secondaryColors: ["Navy", " navy "],
+          material: " Cotton ",
+          fit: " Regular ",
+          styleTags: ["minimalist", " Casual ", "casual"],
+          seasons: ["Summer", " summer "],
+          formality: "Casual",
+          confidence: [],
+        },
+        model: "test",
+        providerRequestId: "request",
+        usage: { inputTokens: 1, cachedInputTokens: 0, cacheWriteInputTokens: 0, outputTokens: 1 },
+      }),
+    });
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await service.analyze("item-1", async () => true);
+
+    expect(ai.analyze).toHaveBeenCalledWith(expect.any(Array), {
+      existingStyleTags: [{ value: "Minimalist", count: 1 }],
+    });
+    expect(repository.completeAnalysis).toHaveBeenCalledWith(
+      "item-1",
+      expect.objectContaining({
+        name: "Blue tee",
+        categoryGroup: "tops",
+        styleTags: ["Minimalist", "Casual"],
+        secondaryColors: ["Navy"],
+        seasons: ["Summer"],
+      }),
+      false,
+    );
+  });
+});

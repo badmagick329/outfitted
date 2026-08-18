@@ -3,10 +3,20 @@ import {
   inferCategoryGroup,
   parseWardrobeFilter,
   quickCategoryGroupOptions,
+  categoryGroupForCategory,
+  detailedCategorySchema,
+  formalitySchema,
   resolveCategoryGroup,
 } from "./category-groups";
 
 describe("wardrobe category groups", () => {
+  it("uses controlled detailed categories and formality values", () => {
+    expect(detailedCategorySchema.parse("T-shirt")).toBe("T-shirt");
+    expect(detailedCategorySchema.safeParse("Button-up shirt").success).toBe(false);
+    expect(categoryGroupForCategory("Dress")).toBe("dresses-jumpsuits");
+    expect(formalitySchema.parse("Smart casual")).toBe("Smart casual");
+    expect(formalitySchema.safeParse("Office").success).toBe(false);
+  });
   it("limits quick section controls without removing other section values", () => {
     expect(quickCategoryGroupOptions.map((option) => option.value)).toEqual([
       "tops",

@@ -1,4 +1,5 @@
 import { conflict, notFound } from "@/shared/application-error";
+import { buildOutfitRequest } from "@/lib/ai-prompts";
 import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
 import type {
   CreateOutfitSuggestionInput,
@@ -28,9 +29,7 @@ export class OutfitService {
     const selected = input.selectedItemId
       ? items.find((item) => item.id === input.selectedItemId)
       : undefined;
-    const request = selected
-      ? `${input.prompt}\nThe chosen outfit must include wardrobe item ${selected.id}, named ${selected.name}.`
-      : input.prompt;
+    const request = buildOutfitRequest(input.prompt, selected);
     const wardrobe = items.map(
       ({
         id,
@@ -72,9 +71,7 @@ export class OutfitService {
         model: this.ai.model ?? "unknown",
         call: () =>
           this.ai.suggest(
-            retry
-              ? `${request}\nThe previous attempt repeated an outfit already saved or ignored. Choose a genuinely different garment combination.`
-              : request,
+            retry ? buildOutfitRequest(input.prompt, selected, true) : request,
             wardrobe,
             styleProfile,
             excludedOutfitItemIds,

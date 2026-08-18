@@ -16,6 +16,8 @@ import type {
 import type { WardrobeRepository } from "../domain/repository";
 import type { ImageVariant } from "@/lib/storage";
 import { maxPhotosPerGarment } from "../domain/photo-files";
+import { categoryGroupForCategory } from "../domain/category-groups";
+import { normalizeGarmentMetadata, styleTagVocabulary } from "../domain/metadata";
 
 type Dependencies = {
   repository: WardrobeRepository;
@@ -119,7 +121,26 @@ export class WardrobeService {
 
   async update(ownerId: string, itemId: string, values: UpdateWardrobeItemInput) {
     await this.getOwnedItem(ownerId, itemId);
-    await this.dependencies.repository.updateOwned(ownerId, itemId, values);
+    const active = await this.dependencies.repository.listActive(ownerId);
+    const normalized = normalizeGarmentMetadata(values, {
+      styleTags: active.flatMap((item) => item.styleTags),
+      colors: active.flatMap((item) =>
+        [item.primaryColor, ...item.secondaryColors].filter((value): value is string =>
+          Boolean(value),
+        ),
+      ),
+      materials: active
+        .map((item) => item.material)
+        .filter((value): value is string => Boolean(value)),
+      fits: active.map((item) => item.fit).filter((value): value is string => Boolean(value)),
+      seasons: active.flatMap((item) => item.seasons),
+    });
+    await this.dependencies.repository.updateOwned(ownerId, itemId, {
+      ...normalized,
+      ...(normalized.category
+        ? { categoryGroup: categoryGroupForCategory(normalized.category) }
+        : {}),
+    });
   }
 
   private async prepareFiles(ownerId: string, files: File[], startPosition: number) {
@@ -272,16 +293,33 @@ export class WardrobeService {
             `data:image/webp;base64,${(await this.dependencies.storage.read(photo.storageKey)).toString("base64")}`,
         ),
       );
+      const active = await this.dependencies.repository.listActive(item.userId);
       const result = await trackAiCall({
         recorder: this.dependencies.usageRecorder,
         userId: item.userId,
         operation: "garment_analysis",
         model: this.dependencies.ai.model ?? "unknown",
-        call: () => this.dependencies.ai.analyze(images),
+        call: () =>
+          this.dependencies.ai.analyze(images, { existingStyleTags: styleTagVocabulary(active) }),
+      });
+      const normalized = normalizeGarmentMetadata(result, {
+        styleTags: active.flatMap((activeItem) => activeItem.styleTags),
+        colors: active.flatMap((activeItem) =>
+          [activeItem.primaryColor, ...activeItem.secondaryColors].filter(
+            (value): value is string => Boolean(value),
+          ),
+        ),
+        materials: active
+          .map((activeItem) => activeItem.material)
+          .filter((value): value is string => Boolean(value)),
+        fits: active
+          .map((activeItem) => activeItem.fit)
+          .filter((value): value is string => Boolean(value)),
+        seasons: active.flatMap((activeItem) => activeItem.seasons),
       });
       await this.dependencies.repository.completeAnalysis(
         itemId,
-        result,
+        { ...normalized, categoryGroup: categoryGroupForCategory(normalized.category) },
         Boolean(item.metadataEditedAt),
       );
     } catch (error) {
