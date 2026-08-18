@@ -20,9 +20,13 @@ const item = {
   excludedFromOutfitSuggestions: false,
 };
 
-function aiResult<T>(data: T) {
+function aiResult(
+  candidates:
+    | { recommendation: string; rationale: string; referencedItemIds: string[] }
+    | Array<{ recommendation: string; rationale: string; referencedItemIds: string[] }>,
+) {
   return {
-    data,
+    data: { candidates: Array.isArray(candidates) ? candidates : [candidates] },
     model: "test-model",
     providerRequestId: "response-1",
     usage: {
@@ -58,6 +62,53 @@ describe("OutfitService.create", () => {
     ).resolves.toMatchObject({ referencedItemIds: ["item-1"] });
     expect(repository.createSuggestion).toHaveBeenCalledWith(
       expect.objectContaining({ selectedItemIds: ["item-1"] }),
+    );
+  });
+
+  it("selects and stores the least repetitive valid candidate from one AI batch", async () => {
+    const secondItem = { ...item, id: "item-2", name: "Stone trousers" };
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item, secondItem]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([["item-1"]]),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue(
+        aiResult([
+          {
+            recommendation: "Invalid",
+            rationale: "No active garments",
+            referencedItemIds: ["other-user-item"],
+          },
+          {
+            recommendation: "Repeat the shirt",
+            rationale: "Still suitable",
+            referencedItemIds: ["item-1", "item-1"],
+          },
+          {
+            recommendation: "Wear the trousers",
+            rationale: "A fresher option",
+            referencedItemIds: ["item-2"],
+          },
+        ]),
+      ),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await expect(
+      service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
+    ).resolves.toMatchObject({
+      recommendation: "Wear the trousers",
+      referencedItemIds: ["item-2"],
+    });
+    expect(ai.suggest).toHaveBeenCalledTimes(1);
+    expect(repository.createSuggestion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedItemIds: ["item-2"],
+        recommendation: "Wear the trousers",
+        rationale: "A fresher option",
+      }),
     );
   });
 
@@ -280,7 +331,32 @@ describe("OutfitService.create", () => {
       service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
     ).resolves.toMatchObject({ referencedItemIds: ["item-2"] });
     expect(ai.suggest).toHaveBeenCalledTimes(2);
-    expect(ai.suggest.mock.calls[1]?.[0]).toContain("previous attempt repeated");
+    expect(ai.suggest.mock.calls[1]?.[0]).toContain("previous candidate batch did not contain");
+  });
+
+  it("returns a conflict after two unusable candidate batches", async () => {
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([["item-1"]]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([]),
+      createSuggestion: vi.fn(),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Repeat the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1"],
+        }),
+      ),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await expect(
+      service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(ai.suggest).toHaveBeenCalledTimes(2);
+    expect(repository.createSuggestion).not.toHaveBeenCalled();
   });
 });
 
