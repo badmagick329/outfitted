@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { inferCategoryGroup, parseWardrobeFilter, resolveCategoryGroup } from "./category-groups";
+import {
+  inferCategoryGroup,
+  parseWardrobeFilter,
+  quickCategoryGroupOptions,
+  resolveCategoryGroup,
+} from "./category-groups";
 
 describe("wardrobe category groups", () => {
+  it("limits quick section controls without removing other section values", () => {
+    expect(quickCategoryGroupOptions.map((option) => option.value)).toEqual([
+      "tops",
+      "bottoms",
+      "outerwear",
+    ]);
+  });
   it.each([
     ["Long-sleeve shirt", "tops"],
     ["Mock-neck pullover", "tops"],

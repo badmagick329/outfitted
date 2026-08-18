@@ -8,15 +8,12 @@ import { MemberStatusBadge, type MemberStatus } from "@/components/member-status
 import { buttonVariants } from "@/components/ui/button";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { requireActiveUser } from "@/features/access/server";
-import { categoryGroupSchema } from "@/features/wardrobe/domain/category-groups";
+import { validatedWardrobeReturnTo } from "@/features/wardrobe/domain/filters";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function ItemPage({ params, searchParams }: PageProps<"/items/[id]">) {
   const { id } = await params;
-  const fromCategory = categoryGroupSchema.safeParse((await searchParams).fromCategory);
-  const wardrobeHref = fromCategory.success
-    ? `/wardrobe?category=${encodeURIComponent(fromCategory.data)}`
-    : "/wardrobe";
+  const wardrobeHref = validatedWardrobeReturnTo((await searchParams).returnTo);
   const access = await requireActiveUser();
   const userId = access.userId;
   const item = await wardrobeService.findOwnedItem(userId, id);
@@ -59,6 +56,7 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
       />
       <div className="mt-9 grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(30rem,0.9fr)]">
         <GarmentPhotoGallery
+          itemId={item.id}
           itemName={item.name}
           photos={photos.map((photo) => ({ id: photo.id, src: `/api/photos/${photo.id}` }))}
         />

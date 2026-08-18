@@ -178,7 +178,7 @@ export function UploadForm() {
             ? `${files.length} ${files.length === 1 ? "photo" : "photos"} selected`
             : dragging
               ? "Drop your photos here"
-              : "Add garment photos"}
+              : "Add photos of this garment"}
         </strong>
         <span id="photo-requirements" className="mt-2 text-sm text-ink/60">
           {files.length
@@ -188,8 +188,7 @@ export function UploadForm() {
             : "Take a photo, choose from your library, or drop files here"}
         </span>
         <span className="mt-1 max-w-md text-sm text-ink/60">
-          For the clearest result, fill the frame and use a background that contrasts with the
-          garment.
+          Show the same garment from different angles.
         </span>
         <div className="mt-6 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
           <Button
@@ -241,7 +240,7 @@ export function UploadForm() {
       {files.length > 0 && (
         <div
           className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
-          aria-label="Selected photo previews"
+          aria-label="Photos of this garment"
         >
           {files.map((file, index) => {
             const preview = previews[index];

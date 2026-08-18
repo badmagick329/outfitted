@@ -26,6 +26,18 @@ export const uploadPhotosSchema = z
     }
   });
 
+export const replacePhotoSchema = z
+  .array(z.instanceof(File))
+  .length(1, "Choose one photo.")
+  .pipe(uploadPhotosSchema.max(1));
+
+export const photoActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("set-cover") }).strict(),
+  z.object({ action: z.literal("rotate"), direction: z.enum(["left", "right"]) }).strict(),
+]);
+
+export type PhotoAction = z.infer<typeof photoActionSchema>;
+
 export const updateWardrobeItemSchema = z
   .object({
     name: z.string().trim().max(160).optional(),

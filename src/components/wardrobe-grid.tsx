@@ -1,197 +1,241 @@
+/* eslint-disable @next/next/no-img-element -- authenticated private image routes cannot use Next's default image loader. */
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- authenticated private image routes cannot use Next's default image loader. */
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Shirt } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Images, Shirt } from "lucide-react";
 import { MemberStatusBadge, type MemberStatus } from "@/components/member-status-badge";
 import {
-  categoryGroupOptions,
-  resolveCategoryGroup,
+  quickCategoryGroupOptions,
   type CategoryGroup,
-  type WardrobeFilter,
 } from "@/features/wardrobe/domain/category-groups";
+import {
+  matchesWardrobeFilters,
+  wardrobeScrollKey,
+  wardrobeUrl,
+  type WardrobeFacet,
+  type WardrobeFilters,
+} from "@/features/wardrobe/domain/filters";
 
 export type WardrobeGridItem = {
   id: string;
   name: string;
   category: string | null;
   categoryGroup: string | null;
+  styleTags: string[];
   analysisStatus: string;
   coverPhotoId: string | null;
+  photoCount: number;
 };
-
-function itemGroup(item: WardrobeGridItem) {
-  return resolveCategoryGroup(item.categoryGroup, item.category);
-}
-
-function WardrobeCard({
-  item,
-  activeFilter,
-}: {
-  item: WardrobeGridItem;
-  activeFilter: WardrobeFilter;
-}) {
-  const status = ["failed", "pending", "processing"].includes(item.analysisStatus)
-    ? (item.analysisStatus as MemberStatus)
-    : null;
-  const hasVisibleDetails = Boolean(item.name || item.category);
-  const accessibleName = item.name || item.category || "garment";
-  const href =
-    activeFilter === "all"
-      ? `/items/${item.id}`
-      : `/items/${item.id}?fromCategory=${encodeURIComponent(activeFilter)}`;
-
-  return (
-    <Link
-      href={href}
-      aria-label={`Open ${accessibleName}${item.name && item.category ? `, ${item.category}` : ""}`}
-      className="group block h-full overflow-hidden rounded-2xl border border-line bg-canvas transition hover:-translate-y-1 hover:border-teal hover:shadow-[5px_5px_0_var(--color-peach)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"
-    >
-      <div className="relative">
-        {item.coverPhotoId ? (
-          <img
-            src={`/api/photos/${item.coverPhotoId}?variant=thumbnail`}
-            alt={item.name || item.category || "Garment"}
-            loading="lazy"
-            decoding="async"
-            className="aspect-[4/5] w-full bg-mist object-cover transition duration-300 group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="grid aspect-[4/5] place-items-center bg-mist text-teal/45">
-            <Shirt size={36} aria-hidden="true" />
-          </div>
-        )}
-        {status && (
-          <span className="absolute right-2 top-2">
-            <MemberStatusBadge status={status} compact />
-          </span>
-        )}
-      </div>
-      {hasVisibleDetails && (
-        <div className="min-w-0 p-3 sm:p-4">
-          {item.name && (
-            <strong className="line-clamp-2 block break-words text-sm leading-tight sm:text-base">
-              {item.name}
-            </strong>
-          )}
-          {item.category && (
-            <span
-              className={`${item.name ? "mt-1" : ""} block truncate text-xs text-ink/60 sm:text-sm`}
-            >
-              {item.category}
-            </span>
-          )}
-        </div>
-      )}
-    </Link>
-  );
-}
 
 export function WardrobeGrid({
   items,
-  initialFilter,
+  filters: initialFilters,
+  facets,
 }: {
   items: WardrobeGridItem[];
-  initialFilter: WardrobeFilter;
+  filters: WardrobeFilters;
+  facets: { categories: WardrobeFacet[]; tags: WardrobeFacet[] };
 }) {
-  const pathname = usePathname();
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState(initialFilter);
-
-  const groupCounts = useMemo(() => {
-    const counts = new Map<CategoryGroup, number>();
-    for (const item of items) {
-      const group = itemGroup(item);
-      counts.set(group, (counts.get(group) ?? 0) + 1);
-    }
-    return counts;
-  }, [items]);
-
-  const visibleOptions = categoryGroupOptions.filter(
-    ({ value }) => (groupCounts.get(value) ?? 0) > 0 || value === activeFilter,
-  );
-  const filteredItems =
-    activeFilter === "all" ? items : items.filter((item) => itemGroup(item) === activeFilter);
-
-  function selectFilter(filter: WardrobeFilter) {
-    setActiveFilter(filter);
-    const params = new URLSearchParams(window.location.search);
-    if (filter === "all") params.delete("category");
-    else params.set("category", filter);
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  const [filters, setFilters] = useState(initialFilters);
+  const [open, setOpen] = useState(false);
+  const currentUrl = wardrobeUrl(filters);
+  const shown = items.filter((item) => matchesWardrobeFilters(item, filters));
+  const detailedFilterCount = filters.categories.length + filters.tags.length;
+  const sectionLabel = quickCategoryGroupOptions.find(
+    (option) => option.value === filters.section,
+  )?.label;
+  useLayoutEffect(() => {
+    const value = sessionStorage.getItem(wardrobeScrollKey(currentUrl));
+    const scroll = Number(value);
+    if (Number.isFinite(scroll) && scroll >= 0)
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scroll);
+          sessionStorage.removeItem(wardrobeScrollKey(currentUrl));
+        }),
+      );
+  }, [currentUrl]);
+  function update(next: WardrobeFilters) {
+    setFilters(next);
+    router.replace(wardrobeUrl(next), { scroll: false });
   }
-
-  const activeLabel = categoryGroupOptions.find(({ value }) => value === activeFilter)?.label;
-  const resultCountLabel =
-    activeFilter === "all"
-      ? `${items.length} ${items.length === 1 ? "piece" : "pieces"}`
-      : `${filteredItems.length} of ${items.length} pieces`;
-
+  function toggle(group: "categories" | "tags", value: string) {
+    const current = filters[group];
+    update({
+      ...filters,
+      [group]: current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value],
+    });
+  }
   return (
     <>
-      <nav className="mt-7" aria-label="Filter wardrobe by category">
-        <span className="mb-3 block text-sm font-medium text-ink/50 sm:hidden" aria-live="polite">
-          {resultCountLabel}
-        </span>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
-          <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+      <nav className="mt-7" aria-label="Filter wardrobe">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: null, label: "All" } as { value: CategoryGroup | null; label: string },
+            ...quickCategoryGroupOptions,
+          ].map((option) => (
             <button
+              key={option.label}
               type="button"
-              aria-pressed={activeFilter === "all"}
-              onClick={() => selectFilter("all")}
-              className={`w-full whitespace-nowrap rounded-full border px-3 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry sm:w-auto sm:px-4 ${
-                activeFilter === "all"
-                  ? "border-teal bg-teal text-canvas"
-                  : "border-line bg-canvas text-ink/65 hover:border-teal hover:text-teal"
-              }`}
+              aria-pressed={filters.section === option.value}
+              onClick={() => update({ ...filters, section: option.value })}
+              className={`rounded-full border px-3 py-2 text-sm font-bold ${filters.section === option.value ? "border-teal bg-teal text-canvas" : "border-line bg-canvas text-ink/65"}`}
             >
-              All
+              {option.label}
             </button>
-            {visibleOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={activeFilter === option.value}
-                onClick={() => selectFilter(option.value)}
-                className={`w-full whitespace-nowrap rounded-full border px-3 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry sm:w-auto sm:px-4 ${
-                  activeFilter === option.value
-                    ? "border-teal bg-teal text-canvas"
-                    : "border-line bg-canvas text-ink/65 hover:border-teal hover:text-teal"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <span
-            className="hidden shrink-0 text-sm font-medium text-ink/50 sm:ml-auto sm:block"
-            aria-live="polite"
-          >
-            {resultCountLabel}
-          </span>
-        </div>
-      </nav>
-
-      {filteredItems.length ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-          {filteredItems.map((item) => (
-            <WardrobeCard key={item.id} item={item} activeFilter={activeFilter} />
           ))}
         </div>
-      ) : (
-        <section className="mt-6 rounded-3xl border border-dashed border-teal/35 bg-mist/65 p-7 sm:p-9">
-          <h2 className="text-xl font-bold tracking-[-0.03em]">
-            No {activeLabel?.toLowerCase() ?? "matching garments"} here
-          </h2>
+        <div className="mt-3 border-t border-line pt-3">
           <button
             type="button"
-            onClick={() => selectFilter("all")}
-            className="mt-4 rounded-full bg-teal px-4 py-2 text-sm font-bold text-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"
+            onClick={() => setOpen((value) => !value)}
+            className="rounded-full border border-teal/30 bg-mist px-3 py-2 text-sm font-bold text-teal transition hover:border-teal"
           >
-            Show all garments
+            Filters{detailedFilterCount ? ` (${detailedFilterCount})` : ""}
+          </button>
+        </div>
+        {open && (
+          <section className="mt-4 rounded-2xl border border-line bg-mist/50 p-4">
+            <div className="flex items-center justify-between">
+              <strong>Filters</strong>
+              <button
+                type="button"
+                className="text-sm font-bold text-teal"
+                onClick={() => update({ section: null, categories: [], tags: [] })}
+              >
+                Clear filters
+              </button>
+            </div>
+            {sectionLabel && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-canvas px-3 py-2 text-sm">
+                <span>Filtering within {sectionLabel}</span>
+                <button
+                  type="button"
+                  className="shrink-0 font-bold text-teal"
+                  onClick={() => update({ ...filters, section: null })}
+                >
+                  Show all
+                </button>
+              </div>
+            )}
+            {facets.categories.length > 0 && (
+              <fieldset className="mt-4">
+                <legend className="text-sm font-bold">Category</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {facets.categories.map((facet) => (
+                    <label
+                      key={facet.value}
+                      className="rounded-full border border-line bg-canvas px-3 py-1.5 text-sm"
+                    >
+                      <input
+                        className="mr-1.5"
+                        type="checkbox"
+                        checked={filters.categories.includes(facet.value)}
+                        onChange={() => toggle("categories", facet.value)}
+                      />
+                      {facet.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {facets.tags.length > 0 && (
+              <fieldset className="mt-4">
+                <legend className="text-sm font-bold">Style</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {facets.tags.map((facet) => (
+                    <label
+                      key={facet.value}
+                      className="rounded-full border border-line bg-canvas px-3 py-1.5 text-sm"
+                    >
+                      <input
+                        className="mr-1.5"
+                        type="checkbox"
+                        checked={filters.tags.includes(facet.value)}
+                        onChange={() => toggle("tags", facet.value)}
+                      />
+                      {facet.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+          </section>
+        )}
+      </nav>
+      {shown.length ? (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          {shown.map((item) => {
+            const status = ["failed", "pending", "processing"].includes(item.analysisStatus)
+              ? (item.analysisStatus as MemberStatus)
+              : null;
+            const href = `/items/${item.id}?returnTo=${encodeURIComponent(currentUrl)}`;
+            return (
+              <Link
+                key={item.id}
+                href={href}
+                onClick={() =>
+                  sessionStorage.setItem(wardrobeScrollKey(currentUrl), String(window.scrollY))
+                }
+                aria-label={`Open ${item.name || item.category || "garment"}`}
+                className="group block overflow-hidden rounded-2xl border border-line bg-canvas"
+              >
+                <div className="relative">
+                  {item.coverPhotoId ? (
+                    <img
+                      src={`/api/photos/${item.coverPhotoId}?variant=thumbnail`}
+                      alt={item.name || item.category || "Garment"}
+                      loading="lazy"
+                      className="aspect-[4/5] w-full bg-mist object-cover"
+                    />
+                  ) : (
+                    <div className="grid aspect-[4/5] place-items-center bg-mist">
+                      <Shirt size={36} />
+                    </div>
+                  )}
+                  {item.photoCount > 1 && (
+                    <span
+                      aria-label={`${item.photoCount} photos`}
+                      className="absolute left-2 top-2 rounded-full bg-ink/75 px-2 py-1 text-xs font-bold text-canvas"
+                    >
+                      <Images className="mr-1 inline" size={12} />
+                      {item.photoCount}
+                    </span>
+                  )}
+                  {status && (
+                    <span className="absolute right-2 top-2">
+                      <MemberStatusBadge status={status} compact />
+                    </span>
+                  )}
+                </div>
+                {(item.name || item.category) && (
+                  <div className="p-3">
+                    <strong className="line-clamp-2 block text-sm">{item.name}</strong>
+                    {item.category && (
+                      <span className="mt-1 block truncate text-xs text-ink/60">
+                        {item.category}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <section className="mt-6 rounded-3xl border border-dashed border-teal/35 bg-mist/65 p-7">
+          <h2 className="text-xl font-bold">No garments match these filters</h2>
+          <button
+            type="button"
+            className="mt-4 rounded-full bg-teal px-4 py-2 text-sm font-bold text-canvas"
+            onClick={() => update({ section: null, categories: [], tags: [] })}
+          >
+            Clear filters
           </button>
         </section>
       )}

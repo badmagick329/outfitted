@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { itemPhotos, wardrobeItems } from "@/lib/db/schema";
 import { inferCategoryGroup } from "../domain/category-groups";
@@ -59,29 +59,63 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
   }
 
   async listArchivedCards(ownerId: string): Promise<WardrobeCard[]> {
+    const photoCounts = db
+      .select({
+        itemId: itemPhotos.itemId,
+        photoCount: sql<number>`count(*)`.mapWith(Number).as("photo_count"),
+      })
+      .from(itemPhotos)
+      .groupBy(itemPhotos.itemId)
+      .as("archived_photo_counts");
     const rows = await db
-      .select({ item: wardrobeItems, coverPhotoId: itemPhotos.id })
+      .select({
+        item: wardrobeItems,
+        coverPhotoId: itemPhotos.id,
+        photoCount: sql<number>`coalesce(${photoCounts.photoCount}, 0)`.mapWith(Number),
+      })
       .from(wardrobeItems)
       .leftJoin(
         itemPhotos,
         and(eq(itemPhotos.itemId, wardrobeItems.id), eq(itemPhotos.position, 0)),
       )
+      .leftJoin(photoCounts, eq(photoCounts.itemId, wardrobeItems.id))
       .where(and(eq(wardrobeItems.userId, ownerId), isNotNull(wardrobeItems.archivedAt)))
       .orderBy(desc(wardrobeItems.archivedAt));
-    return rows.map(({ item, coverPhotoId }) => ({ ...item, coverPhotoId }));
+    return rows.map(({ item, coverPhotoId, photoCount }) => ({
+      ...item,
+      coverPhotoId,
+      photoCount,
+    }));
   }
 
   async listActiveCards(ownerId: string): Promise<WardrobeCard[]> {
+    const photoCounts = db
+      .select({
+        itemId: itemPhotos.itemId,
+        photoCount: sql<number>`count(*)`.mapWith(Number).as("photo_count"),
+      })
+      .from(itemPhotos)
+      .groupBy(itemPhotos.itemId)
+      .as("active_photo_counts");
     const rows = await db
-      .select({ item: wardrobeItems, coverPhotoId: itemPhotos.id })
+      .select({
+        item: wardrobeItems,
+        coverPhotoId: itemPhotos.id,
+        photoCount: sql<number>`coalesce(${photoCounts.photoCount}, 0)`.mapWith(Number),
+      })
       .from(wardrobeItems)
       .leftJoin(
         itemPhotos,
         and(eq(itemPhotos.itemId, wardrobeItems.id), eq(itemPhotos.position, 0)),
       )
+      .leftJoin(photoCounts, eq(photoCounts.itemId, wardrobeItems.id))
       .where(and(eq(wardrobeItems.userId, ownerId), isNull(wardrobeItems.archivedAt)))
       .orderBy(desc(wardrobeItems.createdAt));
-    return rows.map(({ item, coverPhotoId }) => ({ ...item, coverPhotoId }));
+    return rows.map(({ item, coverPhotoId, photoCount }) => ({
+      ...item,
+      coverPhotoId,
+      photoCount,
+    }));
   }
 
   listOwnedPhotos(ownerId: string, itemId: string) {
@@ -120,6 +154,140 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
       .from(itemPhotos)
       .where(eq(itemPhotos.itemId, itemId))
       .orderBy(itemPhotos.position);
+  }
+
+  async addPhotos(ownerId: string, itemId: string, photos: ProcessedPhoto[]) {
+    return db.transaction(async (transaction) => {
+      const existing = await transaction
+        .select()
+        .from(itemPhotos)
+        .innerJoin(wardrobeItems, eq(itemPhotos.itemId, wardrobeItems.id))
+        .where(and(eq(wardrobeItems.id, itemId), eq(wardrobeItems.userId, ownerId)))
+        .orderBy(itemPhotos.position);
+      if (!existing.length) throw new Error("Garment not found");
+      const offset = existing.length;
+      await transaction.insert(itemPhotos).values(
+        photos.map((photo, index) => ({
+          itemId,
+          storageKey: photo.key,
+          contentHash: photo.contentHash,
+          width: photo.width,
+          height: photo.height,
+          position: offset + index,
+        })),
+      );
+      await transaction
+        .update(wardrobeItems)
+        .set({ updatedAt: new Date() })
+        .where(and(eq(wardrobeItems.id, itemId), eq(wardrobeItems.userId, ownerId)));
+      return transaction
+        .select()
+        .from(itemPhotos)
+        .where(eq(itemPhotos.itemId, itemId))
+        .orderBy(itemPhotos.position);
+    });
+  }
+
+  async replacePhoto(ownerId: string, photoId: string, photo: ProcessedPhoto) {
+    return db.transaction(async (transaction) => {
+      const [owned] = await transaction
+        .select({ photo: itemPhotos })
+        .from(itemPhotos)
+        .innerJoin(wardrobeItems, eq(itemPhotos.itemId, wardrobeItems.id))
+        .where(and(eq(itemPhotos.id, photoId), eq(wardrobeItems.userId, ownerId)))
+        .limit(1);
+      if (!owned) throw new Error("Photo not found");
+      await transaction.delete(itemPhotos).where(eq(itemPhotos.id, photoId));
+      await transaction.insert(itemPhotos).values({
+        itemId: owned.photo.itemId,
+        storageKey: photo.key,
+        contentHash: photo.contentHash,
+        width: photo.width,
+        height: photo.height,
+        position: owned.photo.position,
+      });
+      await transaction
+        .update(wardrobeItems)
+        .set({ updatedAt: new Date() })
+        .where(eq(wardrobeItems.id, owned.photo.itemId));
+      return transaction
+        .select()
+        .from(itemPhotos)
+        .where(eq(itemPhotos.itemId, owned.photo.itemId))
+        .orderBy(itemPhotos.position);
+    });
+  }
+
+  async removePhoto(ownerId: string, photoId: string) {
+    return db.transaction(async (transaction) => {
+      const [owned] = await transaction
+        .select({ photo: itemPhotos })
+        .from(itemPhotos)
+        .innerJoin(wardrobeItems, eq(itemPhotos.itemId, wardrobeItems.id))
+        .where(and(eq(itemPhotos.id, photoId), eq(wardrobeItems.userId, ownerId)))
+        .limit(1);
+      if (!owned) throw new Error("Photo not found");
+      const photos = await transaction
+        .select()
+        .from(itemPhotos)
+        .where(eq(itemPhotos.itemId, owned.photo.itemId))
+        .orderBy(itemPhotos.position);
+      if (photos.length <= 1) throw new Error("Cannot remove final photo");
+      await transaction.delete(itemPhotos).where(eq(itemPhotos.id, photoId));
+      for (const [position, current] of photos.filter((photo) => photo.id !== photoId).entries())
+        await transaction.update(itemPhotos).set({ position }).where(eq(itemPhotos.id, current.id));
+      await transaction
+        .update(wardrobeItems)
+        .set({ updatedAt: new Date() })
+        .where(eq(wardrobeItems.id, owned.photo.itemId));
+      return {
+        removed: owned.photo,
+        photos: await transaction
+          .select()
+          .from(itemPhotos)
+          .where(eq(itemPhotos.itemId, owned.photo.itemId))
+          .orderBy(itemPhotos.position),
+      };
+    });
+  }
+
+  async setMainPhoto(ownerId: string, photoId: string) {
+    return db.transaction(async (transaction) => {
+      const [owned] = await transaction
+        .select({ photo: itemPhotos })
+        .from(itemPhotos)
+        .innerJoin(wardrobeItems, eq(itemPhotos.itemId, wardrobeItems.id))
+        .where(and(eq(itemPhotos.id, photoId), eq(wardrobeItems.userId, ownerId)))
+        .limit(1);
+      if (!owned) throw new Error("Photo not found");
+      const reordered = [
+        (
+          await transaction
+            .select()
+            .from(itemPhotos)
+            .where(eq(itemPhotos.itemId, owned.photo.itemId))
+            .orderBy(itemPhotos.position)
+        ).find((photo) => photo.id === photoId)!,
+        ...(
+          await transaction
+            .select()
+            .from(itemPhotos)
+            .where(eq(itemPhotos.itemId, owned.photo.itemId))
+            .orderBy(itemPhotos.position)
+        ).filter((photo) => photo.id !== photoId),
+      ];
+      for (const [position, photo] of reordered.entries())
+        await transaction.update(itemPhotos).set({ position }).where(eq(itemPhotos.id, photo.id));
+      await transaction
+        .update(wardrobeItems)
+        .set({ updatedAt: new Date() })
+        .where(eq(wardrobeItems.id, owned.photo.itemId));
+      return transaction
+        .select()
+        .from(itemPhotos)
+        .where(eq(itemPhotos.itemId, owned.photo.itemId))
+        .orderBy(itemPhotos.position);
+    });
   }
 
   listInProgress(ownerId: string): Promise<AnalysisStatus[]> {

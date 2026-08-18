@@ -6,6 +6,7 @@ export type StoredImage = { key: string; width: number; height: number };
 export type ImageVariant = "display" | "thumbnail";
 export interface StorageProvider {
   saveImage(input: Buffer, ownerId: string): Promise<StoredImage>;
+  rotateImage(key: string, ownerId: string, direction: "left" | "right"): Promise<StoredImage>;
   read(key: string, variant?: ImageVariant): Promise<Buffer>;
   delete(key: string): Promise<void>;
 }
@@ -72,6 +73,14 @@ export class LocalStorageProvider implements StorageProvider {
       ]);
       throw error;
     }
+  }
+
+  async rotateImage(key: string, ownerId: string, direction: "left" | "right") {
+    const input = await readFile(this.destination(key));
+    const rotated = await sharp(input, { failOn: "none" })
+      .rotate(direction === "left" ? 270 : 90)
+      .toBuffer();
+    return this.saveImage(rotated, ownerId);
   }
 
   async read(key: string, variant: ImageVariant = "display") {

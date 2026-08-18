@@ -5,7 +5,7 @@ import type { UpdateWardrobeItemInput } from "./contracts";
 
 export type WardrobeItem = typeof wardrobeItems.$inferSelect;
 export type WardrobePhoto = typeof itemPhotos.$inferSelect;
-export type WardrobeCard = WardrobeItem & { coverPhotoId: string | null };
+export type WardrobeCard = WardrobeItem & { coverPhotoId: string | null; photoCount: number };
 export type AnalysisStatus = { id: string; status: string; updatedAt: Date };
 
 export interface WardrobeRepository {
@@ -23,6 +23,13 @@ export interface WardrobeRepository {
   findOwnedPhoto(ownerId: string, photoId: string): Promise<WardrobePhoto | null>;
   findOwnedPhotoByContentHash(ownerId: string, contentHash: string): Promise<WardrobePhoto | null>;
   listPhotos(itemId: string): Promise<WardrobePhoto[]>;
+  addPhotos(ownerId: string, itemId: string, photos: ProcessedPhoto[]): Promise<WardrobePhoto[]>;
+  replacePhoto(ownerId: string, photoId: string, photo: ProcessedPhoto): Promise<WardrobePhoto[]>;
+  removePhoto(
+    ownerId: string,
+    photoId: string,
+  ): Promise<{ removed: WardrobePhoto; photos: WardrobePhoto[] }>;
+  setMainPhoto(ownerId: string, photoId: string): Promise<WardrobePhoto[]>;
   listInProgress(ownerId: string): Promise<AnalysisStatus[]>;
   updateOwned(ownerId: string, itemId: string, values: UpdateWardrobeItemInput): Promise<void>;
   setAnalysisPending(ownerId: string, itemId: string): Promise<void>;

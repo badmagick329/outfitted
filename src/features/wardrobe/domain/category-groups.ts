@@ -20,6 +20,10 @@ export const categoryGroupOptions: Array<{ value: CategoryGroup; label: string }
   { value: "other", label: "Other" },
 ];
 
+export const quickCategoryGroupOptions = categoryGroupOptions.filter(({ value }) =>
+  ["tops", "bottoms", "outerwear"].includes(value),
+);
+
 const categoryMatchers: Array<{ group: CategoryGroup; pattern: RegExp }> = [
   {
     group: "outerwear",
