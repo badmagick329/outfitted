@@ -44,6 +44,7 @@ export function WardrobeGrid({
   const currentUrl = wardrobeUrl(filters);
   const shown = items.filter((item) => matchesWardrobeFilters(item, filters));
   const detailedFilterCount = filters.categories.length + filters.tags.length;
+  const hasActiveFilters = filters.section !== null || detailedFilterCount > 0;
   const sectionLabel = quickCategoryGroupOptions.find(
     (option) => option.value === filters.section,
   )?.label;
@@ -70,6 +71,9 @@ export function WardrobeGrid({
         ? current.filter((entry) => entry !== value)
         : [...current, value],
     });
+  }
+  function facetAccessibleLabel(facet: WardrobeFacet) {
+    return `${facet.label}, ${facet.count} ${facet.count === 1 ? "garment" : "garments"}`;
   }
   return (
     <>
@@ -105,7 +109,8 @@ export function WardrobeGrid({
               <strong>Filters</strong>
               <button
                 type="button"
-                className="text-sm font-bold text-teal"
+                disabled={!hasActiveFilters}
+                className={`text-sm font-bold transition ${hasActiveFilters ? "text-teal hover:text-teal-dark" : "cursor-not-allowed text-ink/35"}`}
                 onClick={() => update({ section: null, categories: [], tags: [] })}
               >
                 Clear filters
@@ -135,10 +140,17 @@ export function WardrobeGrid({
                       <input
                         className="mr-1.5"
                         type="checkbox"
+                        aria-label={facetAccessibleLabel(facet)}
                         checked={filters.categories.includes(facet.value)}
                         onChange={() => toggle("categories", facet.value)}
                       />
                       {facet.label}
+                      <span
+                        aria-hidden="true"
+                        className="ml-1.5 inline-flex min-w-5 justify-center rounded-full bg-ink/8 px-1.5 py-0.5 font-mono text-[0.6875rem] leading-none text-ink/60"
+                      >
+                        {facet.count}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -156,10 +168,17 @@ export function WardrobeGrid({
                       <input
                         className="mr-1.5"
                         type="checkbox"
+                        aria-label={facetAccessibleLabel(facet)}
                         checked={filters.tags.includes(facet.value)}
                         onChange={() => toggle("tags", facet.value)}
                       />
                       {facet.label}
+                      <span
+                        aria-hidden="true"
+                        className="ml-1.5 inline-flex min-w-5 justify-center rounded-full bg-ink/8 px-1.5 py-0.5 font-mono text-[0.6875rem] leading-none text-ink/60"
+                      >
+                        {facet.count}
+                      </span>
                     </label>
                   ))}
                 </div>

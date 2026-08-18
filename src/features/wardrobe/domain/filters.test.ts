@@ -14,6 +14,76 @@ const items = [
 const facets = wardrobeFacets(items);
 
 describe("wardrobe filters", () => {
+  it("counts normalized categories and style tags across the active wardrobe", () => {
+    const activeItems = [
+      {
+        category: " T-shirt ",
+        categoryGroup: "tops",
+        styleTags: ["Music merchandise", " technical ", "music merchandise"],
+      },
+      {
+        category: "t-shirt",
+        categoryGroup: "tops",
+        styleTags: ["MUSIC   MERCHANDISE", "Technical"],
+      },
+      {
+        category: " Button-up   shirt ",
+        categoryGroup: "tops",
+        styleTags: ["Technical"],
+      },
+    ];
+
+    expect(wardrobeFacets(activeItems)).toEqual({
+      categories: [
+        { value: "button-up shirt", label: "Button-up shirt", count: 1 },
+        { value: "t-shirt", label: "T-shirt", count: 2 },
+      ],
+      tags: [
+        { value: "music merchandise", label: "Music merchandise", count: 2 },
+        { value: "technical", label: "technical", count: 3 },
+      ],
+    });
+  });
+
+  it("leaves active-wardrobe facet counts unchanged when filters are selected", () => {
+    const activeItems = [
+      { category: "T-shirt", categoryGroup: "tops", styleTags: ["Casual", "Technical"] },
+      { category: "Jeans", categoryGroup: "bottoms", styleTags: ["Casual"] },
+    ];
+    const activeFacets = wardrobeFacets(activeItems);
+    const filters = parseWardrobeFilters({ category: "t-shirt", tag: "technical" }, activeFacets);
+
+    expect(activeItems.filter((item) => matchesWardrobeFilters(item, filters))).toHaveLength(1);
+    expect(activeFacets).toEqual({
+      categories: [
+        { value: "jeans", label: "Jeans", count: 1 },
+        { value: "t-shirt", label: "T-shirt", count: 1 },
+      ],
+      tags: [
+        { value: "casual", label: "Casual", count: 2 },
+        { value: "technical", label: "Technical", count: 1 },
+      ],
+    });
+  });
+
+  it("excludes archived garments by building facets from the active-wardrobe source", () => {
+    const wardrobe = [
+      { category: "T-shirt", categoryGroup: "tops", styleTags: ["Casual"], archivedAt: null },
+      {
+        category: "Coat",
+        categoryGroup: "outerwear",
+        styleTags: ["Formal"],
+        archivedAt: new Date(),
+      },
+    ];
+    const activeItems = wardrobe.filter((item) => item.archivedAt === null);
+
+    expect(wardrobeFacets(activeItems)).toEqual({
+      categories: [{ value: "t-shirt", label: "T-shirt", count: 1 }],
+      tags: [{ value: "casual", label: "Casual", count: 1 }],
+    });
+  });
+
   it("normalizes repeated URL values and applies OR within groups", () => {
     const filters = parseWardrobeFilters(
       { section: "tops", category: ["t-shirt", "Button-up   shirt"], tag: [" casual ", "smart"] },
