@@ -1,4 +1,4 @@
-import { asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { aiUsageEvents, users } from "@/lib/db/schema";
 import type { AiUsageRecorder, RecordAiUsageInput } from "./domain/contracts";
@@ -28,7 +28,7 @@ export const aiUsageRecorder: AiUsageRecorder = {
 
 export type AiUsageRange = 7 | 30 | 90;
 
-export async function getAiUsageDashboard(days: AiUsageRange) {
+export async function getAiUsageDashboard(days: AiUsageRange, userId?: string) {
   const today = new Date();
   const start = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - days + 1),
@@ -48,7 +48,12 @@ export async function getAiUsageDashboard(days: AiUsageRange) {
     })
     .from(aiUsageEvents)
     .innerJoin(users, eq(aiUsageEvents.userId, users.id))
-    .where(gte(aiUsageEvents.createdAt, start))
+    .where(
+      and(
+        gte(aiUsageEvents.createdAt, start),
+        userId ? eq(aiUsageEvents.userId, userId) : undefined,
+      ),
+    )
     .orderBy(asc(aiUsageEvents.createdAt));
 
   const daily = new Map<

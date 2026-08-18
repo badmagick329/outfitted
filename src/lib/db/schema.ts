@@ -48,6 +48,22 @@ export const accessAuditEvents = pgTable("access_audit_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const userFeatureGrants = pgTable(
+  "user_feature_grants",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    featureKey: varchar("feature_key", { length: 64 }).notNull(),
+    remainingUses: integer("remaining_uses").notNull().default(0),
+    grantedByUserId: text("granted_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.featureKey] })],
+);
+
 export const aiUsageEvents = pgTable(
   "ai_usage_events",
   {

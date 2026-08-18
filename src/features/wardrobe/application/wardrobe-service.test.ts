@@ -33,6 +33,9 @@ function dependencies({ enqueue = vi.fn().mockResolvedValue(undefined) } = {}) {
     findById: vi.fn().mockResolvedValue(null),
     findOwnedPhotoByContentHash: vi.fn().mockResolvedValue(null),
     setAnalysisNotRequested: vi.fn().mockResolvedValue(undefined),
+    listActive: vi.fn().mockResolvedValue([]),
+    reserveAnalysis: vi.fn().mockResolvedValue(true),
+    failAnalysis: vi.fn().mockResolvedValue(undefined),
   } as unknown as WardrobeRepository;
   const storage = {
     saveImage: vi.fn().mockResolvedValue({ key: "user-1/photo.webp", width: 100, height: 100 }),
@@ -155,6 +158,93 @@ describe("WardrobeService.analyze", () => {
         seasons: ["Summer"],
       }),
       false,
+    );
+  });
+
+  it("passes forced re-analysis through to metadata replacement", async () => {
+    const { repository, storage, jobs, ai } = dependencies();
+    Object.assign(repository, {
+      findById: vi.fn().mockResolvedValue({ ...item, metadataEditedAt: new Date() }),
+      setAnalysisProcessing: vi.fn().mockResolvedValue(undefined),
+      listPhotos: vi.fn().mockResolvedValue([{ storageKey: "user-1/photo.webp" }]),
+      listActive: vi.fn().mockResolvedValue([]),
+      completeAnalysis: vi.fn().mockResolvedValue(undefined),
+      failAnalysis: vi.fn().mockResolvedValue(undefined),
+    });
+    Object.assign(storage, { read: vi.fn().mockResolvedValue(Buffer.from("image")) });
+    Object.assign(ai, {
+      analyze: vi.fn().mockResolvedValue({
+        data: {
+          name: "Replacement name",
+          description: "Replacement description",
+          category: "T-shirt",
+          primaryColor: "Blue",
+          secondaryColors: [],
+          material: "Cotton",
+          fit: "Regular",
+          styleTags: [],
+          seasons: [],
+          formality: "Casual",
+          confidence: [],
+        },
+        model: "test",
+        providerRequestId: "request",
+        usage: { inputTokens: 1, cachedInputTokens: 0, cacheWriteInputTokens: 0, outputTokens: 1 },
+      }),
+    });
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await service.analyze("item-1", async () => true, true);
+
+    expect(repository.completeAnalysis).toHaveBeenCalledWith(
+      "item-1",
+      expect.objectContaining({ name: "Replacement name" }),
+      true,
+    );
+  });
+});
+
+describe("WardrobeService.queueBulkReanalysis", () => {
+  it("queues eligible active garments once and skips work already in progress", async () => {
+    const { repository, storage, jobs, ai } = dependencies();
+    Object.assign(repository, {
+      listActive: vi.fn().mockResolvedValue([
+        { ...item, id: "ready", analysisStatus: "complete" },
+        { ...item, id: "pending", analysisStatus: "pending" },
+        { ...item, id: "processing", analysisStatus: "processing" },
+      ]),
+      reserveAnalysis: vi.fn().mockResolvedValue(true),
+      failAnalysis: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await expect(service.queueBulkReanalysis("user-1")).resolves.toEqual({
+      queued: 1,
+      skipped: 2,
+      failed: 0,
+    });
+    expect(repository.reserveAnalysis).toHaveBeenCalledWith("user-1", "ready");
+    expect(jobs.enqueueAnalysis).toHaveBeenCalledWith("ready", { forceOverwrite: true });
+  });
+
+  it("marks items failed when their re-analysis job cannot be queued", async () => {
+    const enqueue = vi.fn().mockRejectedValue(new Error("queue unavailable"));
+    const { repository, storage, jobs, ai } = dependencies({ enqueue });
+    Object.assign(repository, {
+      listActive: vi.fn().mockResolvedValue([{ ...item, id: "ready", analysisStatus: "complete" }]),
+      reserveAnalysis: vi.fn().mockResolvedValue(true),
+      failAnalysis: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new WardrobeService({ repository, storage, jobs, ai });
+
+    await expect(service.queueBulkReanalysis("user-1")).resolves.toEqual({
+      queued: 0,
+      skipped: 0,
+      failed: 1,
+    });
+    expect(repository.failAnalysis).toHaveBeenCalledWith(
+      "ready",
+      "Unable to queue re-analysis. Please try again.",
     );
   });
 });

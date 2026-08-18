@@ -16,6 +16,13 @@ type ManagedUser = {
   accessStatus: AccessStatus;
   featureTier: FeatureTier;
   isAdmin: boolean;
+  featureGrants: Array<{
+    key: string;
+    label: string;
+    description: string;
+    remainingUses: number;
+    available: boolean;
+  }>;
 };
 
 type AuditEvent = {
@@ -56,6 +63,9 @@ function ManagedUserRow({ user }: { user: ManagedUser }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [featureNotice, setFeatureNotice] = useState("");
+  const [featureError, setFeatureError] = useState("");
+  const [featureSaving, setFeatureSaving] = useState<string | null>(null);
   const dirty = accessStatus !== savedAccessStatus || featureTier !== savedFeatureTier;
 
   async function save(event: React.FormEvent) {
@@ -86,55 +96,82 @@ function ManagedUserRow({ user }: { user: ManagedUser }) {
     }
   }
 
+  async function updateFeature(featureKey: string, action: "grant" | "revoke") {
+    if (featureSaving) return;
+    setFeatureSaving(featureKey);
+    setFeatureNotice("");
+    setFeatureError("");
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/feature-grants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featureKey, action }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        setFeatureError(payload?.error?.message ?? "Couldn’t update this alpha feature.");
+        return;
+      }
+      setFeatureNotice(action === "grant" ? "One use granted." : "Grant revoked.");
+      router.refresh();
+    } catch {
+      setFeatureError("Couldn’t update this alpha feature. Check your connection and try again.");
+    } finally {
+      setFeatureSaving(null);
+    }
+  }
+
   return (
     <form
-      className={`grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] sm:items-end sm:px-7 ${accessStatus === "pending" ? "bg-citrus/10" : ""}`}
+      className={`p-5 sm:px-7 ${accessStatus === "pending" ? "bg-citrus/10" : ""}`}
       onSubmit={save}
     >
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <strong className="break-words">{user.name ?? "Unnamed member"}</strong>
-          <AccessBadge status={accessStatus} />
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] sm:items-end">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <strong className="break-words">{user.name ?? "Unnamed member"}</strong>
+            <AccessBadge status={accessStatus} />
+          </div>
+          <span className="block break-all text-sm text-ink/60">{user.email}</span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-wide text-ink/45">
+            Joined {user.joinedLabel}
+            {user.isAdmin ? " · administrator" : ""}
+          </span>
         </div>
-        <span className="block break-all text-sm text-ink/60">{user.email}</span>
-        <span className="mt-1 block font-mono text-[10px] uppercase tracking-wide text-ink/45">
-          Joined {user.joinedLabel}
-          {user.isAdmin ? " · administrator" : ""}
-        </span>
+        <label className="block text-xs font-bold text-ink/70">
+          Access
+          <select
+            value={accessStatus}
+            onChange={(event) => {
+              setAccessStatus(event.target.value as AccessStatus);
+              setNotice("");
+            }}
+            className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
+          >
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </label>
+        <label className="block text-xs font-bold text-ink/70">
+          Features
+          <select
+            value={featureTier}
+            onChange={(event) => {
+              setFeatureTier(event.target.value as FeatureTier);
+              setNotice("");
+            }}
+            className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
+          >
+            <option value="inventory">Inventory</option>
+            <option value="ai">Outfit Desk</option>
+          </select>
+        </label>
+        <Button type="submit" size="sm" disabled={saving || !dirty}>
+          {saving && <LoaderCircle className="animate-spin" size={14} aria-hidden="true" />}
+          {saving ? "Saving…" : "Save"}
+        </Button>
       </div>
-      <label className="block text-xs font-bold text-ink/70">
-        Access
-        <select
-          value={accessStatus}
-          onChange={(event) => {
-            setAccessStatus(event.target.value as AccessStatus);
-            setNotice("");
-          }}
-          className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
-        >
-          <option value="pending">Pending</option>
-          <option value="active">Active</option>
-          <option value="disabled">Disabled</option>
-        </select>
-      </label>
-      <label className="block text-xs font-bold text-ink/70">
-        Features
-        <select
-          value={featureTier}
-          onChange={(event) => {
-            setFeatureTier(event.target.value as FeatureTier);
-            setNotice("");
-          }}
-          className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
-        >
-          <option value="inventory">Inventory</option>
-          <option value="ai">Outfit Desk</option>
-        </select>
-      </label>
-      <Button type="submit" size="sm" disabled={saving || !dirty}>
-        {saving && <LoaderCircle className="animate-spin" size={14} aria-hidden="true" />}
-        {saving ? "Saving…" : "Save"}
-      </Button>
       {(error || notice) && (
         <p
           role={error ? "alert" : "status"}
@@ -143,6 +180,67 @@ function ManagedUserRow({ user }: { user: ManagedUser }) {
           {error || notice}
         </p>
       )}
+      <section
+        className="mt-5 border-t border-line pt-4"
+        aria-label={`Alpha features for ${user.name ?? user.email}`}
+      >
+        <h3 className="text-sm font-bold">Alpha features</h3>
+        <div className="mt-3 space-y-3">
+          {user.featureGrants.map((feature) => {
+            const eligible = accessStatus === "active" && featureTier === "ai";
+            const savingFeature = featureSaving === feature.key;
+            return (
+              <div
+                key={feature.key}
+                className="flex flex-col gap-3 rounded-2xl border border-line bg-canvas/65 p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <strong className="block text-sm">{feature.label}</strong>
+                  <span className="mt-0.5 block text-xs text-ink/60">{feature.description}</span>
+                  <span className="mt-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-ink/50">
+                    {user.isAdmin
+                      ? "Always available to administrators"
+                      : feature.available
+                        ? "Available once"
+                        : "Unavailable"}
+                  </span>
+                </div>
+                {!user.isAdmin &&
+                  (feature.available ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={savingFeature}
+                      onClick={() => updateFeature(feature.key, "revoke")}
+                    >
+                      {savingFeature ? "Updating…" : "Revoke"}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={savingFeature || !eligible}
+                      title={eligible ? undefined : "Requires an active account with AI access."}
+                      onClick={() => updateFeature(feature.key, "grant")}
+                    >
+                      {savingFeature ? "Granting…" : "Grant one use"}
+                    </Button>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+        {(featureError || featureNotice) && (
+          <p
+            role={featureError ? "alert" : "status"}
+            className={`mt-3 rounded-xl px-3 py-2 text-sm ${featureError ? "bg-red-50 text-red-700" : "border border-teal/15 bg-mist text-teal-dark"}`}
+          >
+            {featureError || featureNotice}
+          </p>
+        )}
+      </section>
     </form>
   );
 }

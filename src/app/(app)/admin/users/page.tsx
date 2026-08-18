@@ -6,10 +6,12 @@ import {
   listManagedUsers,
   requireAdminUser,
 } from "@/features/access/server";
+import { listFeatureGrantsForUsers } from "@/features/feature-grants/server";
 
 export default async function AdminUsersPage() {
   await requireAdminUser();
   const [users, auditEvents] = await Promise.all([listManagedUsers(), listAccessAuditEvents()]);
+  const featureGrants = await listFeatureGrantsForUsers(users.map((user) => user.id));
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
@@ -44,6 +46,7 @@ export default async function AdminUsersPage() {
         users={sortedUsers.map(({ createdAt, ...user }) => ({
           ...user,
           joinedLabel: dateFormatter.format(createdAt),
+          featureGrants: featureGrants[user.id] ?? [],
         }))}
         auditEvents={auditEvents.map(({ createdAt, ...event }) => ({
           ...event,
