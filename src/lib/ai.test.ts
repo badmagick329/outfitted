@@ -85,6 +85,18 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("current request and any explicitly selected garment take priority");
   });
 
+  it("uses recent garment use as a soft diversity preference", () => {
+    const prompt = buildOutfitSuggestionPrompt("Dinner", []);
+
+    expect(prompt).toContain("Recent suggestion information is soft preference data");
+    expect(prompt).toContain("recentSuggestionCount of 0");
+    expect(prompt).toContain(
+      "lower lastSuggestedPosition means the garment was used more recently",
+    );
+    expect(prompt).toContain("Never treat recent use as a hard exclusion");
+    expect(prompt).toContain("explicitly selected garment");
+  });
+
   it("excludes saved and ignored garment combinations by ID without banning individual items", () => {
     const prompt = buildOutfitSuggestionPrompt(
       "Dinner",

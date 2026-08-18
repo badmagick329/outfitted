@@ -39,6 +39,7 @@ describe("OutfitService.create", () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
       listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -65,6 +66,7 @@ describe("OutfitService.create", () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item, excludedItem]),
       listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -94,6 +96,7 @@ describe("OutfitService.create", () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
       listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([["item-1"], ["item-1"]]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -121,6 +124,7 @@ describe("OutfitService.create", () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
       listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -157,6 +161,7 @@ describe("OutfitService.create", () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
       listExcludedItemIds: vi.fn().mockResolvedValue(excludedItemIds),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
@@ -178,12 +183,68 @@ describe("OutfitService.create", () => {
         expect.objectContaining({
           categoryGroup: "tops",
           secondaryColors: ["navy"],
-          confidence: [],
-          analysisStatus: "complete",
+          recentSuggestionCount: 0,
+          lastSuggestedPosition: null,
         }),
       ],
       null,
       excludedItemIds,
+    );
+    const wardrobe = ai.suggest.mock.calls[0]?.[1];
+    expect(wardrobe?.[0]).not.toHaveProperty("confidence");
+    expect(wardrobe?.[0]).not.toHaveProperty("analysisStatus");
+  });
+
+  it("adds compact recent usage without including the full suggestion history", async () => {
+    const secondItem = { ...item, id: "item-2", name: "Stone trousers" };
+    const neverSuggestedItem = { ...item, id: "item-3", name: "Berry jacket" };
+    const recentSuggestionItemIds = [
+      ["item-1", "item-2"],
+      ["item-2"],
+      ["item-1", "item-1"],
+      ["item-2", "unavailable-item"],
+    ];
+    const repository = {
+      listActiveWardrobe: vi.fn().mockResolvedValue([item, secondItem, neverSuggestedItem]),
+      listExcludedItemIds: vi.fn().mockResolvedValue([]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue(recentSuggestionItemIds),
+      createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
+    } as unknown as OutfitRepository;
+    const ai = {
+      suggest: vi.fn().mockResolvedValue(
+        aiResult({
+          recommendation: "Try the shirt",
+          rationale: "A good match",
+          referencedItemIds: ["item-1"],
+        }),
+      ),
+    };
+    const service = new OutfitService(repository, ai);
+
+    await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
+
+    expect(repository.listRecentSuggestionItemIds).toHaveBeenCalledWith("user-1", 20);
+    expect(ai.suggest).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "item-1",
+          recentSuggestionCount: 2,
+          lastSuggestedPosition: 0,
+        }),
+        expect.objectContaining({
+          id: "item-2",
+          recentSuggestionCount: 3,
+          lastSuggestedPosition: 0,
+        }),
+        expect.objectContaining({
+          id: "item-3",
+          recentSuggestionCount: 0,
+          lastSuggestedPosition: null,
+        }),
+      ]),
+      null,
+      [],
     );
   });
 
@@ -192,6 +253,7 @@ describe("OutfitService.create", () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item, secondItem]),
       listExcludedItemIds: vi.fn().mockResolvedValue([["item-1"]]),
+      listRecentSuggestionItemIds: vi.fn().mockResolvedValue([]),
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {

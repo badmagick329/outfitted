@@ -17,6 +17,16 @@ export class DrizzleOutfitRepository implements OutfitRepository {
       );
   }
 
+  async listRecentSuggestionItemIds(ownerId: string, limit: number) {
+    const suggestions = await db
+      .select({ selectedItemIds: outfitSuggestions.selectedItemIds })
+      .from(outfitSuggestions)
+      .where(eq(outfitSuggestions.userId, ownerId))
+      .orderBy(desc(outfitSuggestions.createdAt))
+      .limit(limit);
+    return suggestions.map((suggestion) => suggestion.selectedItemIds);
+  }
+
   async createSuggestion(input: {
     ownerId: string;
     request: string;

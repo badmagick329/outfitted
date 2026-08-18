@@ -10,6 +10,28 @@ import { canonicalOutfitItemIds, outfitSignature } from "../domain/outfit-signat
 import type { OutfitAi, OutfitAiUsageRecorder, OutfitStyleProfileReader } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
 
+const recentSuggestionHistoryLimit = 20;
+
+type RecentSuggestionUsage = {
+  recentSuggestionCount: number;
+  lastSuggestedPosition: number | null;
+};
+
+function recentSuggestionUsageByItemId(history: string[][]) {
+  const usageByItemId = new Map<string, RecentSuggestionUsage>();
+  for (const [position, itemIds] of history.entries()) {
+    for (const itemId of new Set(itemIds)) {
+      const usage = usageByItemId.get(itemId);
+      if (usage) {
+        usage.recentSuggestionCount += 1;
+      } else {
+        usageByItemId.set(itemId, { recentSuggestionCount: 1, lastSuggestedPosition: position });
+      }
+    }
+  }
+  return usageByItemId;
+}
+
 export class OutfitService {
   constructor(
     private readonly repository: OutfitRepository,
@@ -19,11 +41,13 @@ export class OutfitService {
   ) {}
 
   async create(ownerId: string, input: CreateOutfitSuggestionInput) {
-    const [activeItems, styleProfile, excludedOutfitItemIds] = await Promise.all([
-      this.repository.listActiveWardrobe(ownerId),
-      this.styleProfiles?.find(ownerId) ?? Promise.resolve(null),
-      this.repository.listExcludedItemIds(ownerId),
-    ]);
+    const [activeItems, styleProfile, excludedOutfitItemIds, recentSuggestionItemIds] =
+      await Promise.all([
+        this.repository.listActiveWardrobe(ownerId),
+        this.styleProfiles?.find(ownerId) ?? Promise.resolve(null),
+        this.repository.listExcludedItemIds(ownerId),
+        this.repository.listRecentSuggestionItemIds(ownerId, recentSuggestionHistoryLimit),
+      ]);
     const items = activeItems.filter((item) => !item.excludedFromOutfitSuggestions);
     if (input.selectedItemId && !items.some((item) => item.id === input.selectedItemId))
       throw notFound("Selected garment not found");
@@ -31,6 +55,7 @@ export class OutfitService {
       ? items.find((item) => item.id === input.selectedItemId)
       : undefined;
     const request = buildOutfitRequest(input.prompt, selected);
+    const recentUsageByItemId = recentSuggestionUsageByItemId(recentSuggestionItemIds);
     const wardrobe = items.map(
       ({
         id,
@@ -45,8 +70,6 @@ export class OutfitService {
         styleTags,
         seasons,
         formality,
-        confidence,
-        analysisStatus,
       }) => ({
         id,
         name,
@@ -60,8 +83,8 @@ export class OutfitService {
         styleTags,
         seasons,
         formality,
-        confidence,
-        analysisStatus,
+        recentSuggestionCount: recentUsageByItemId.get(id)?.recentSuggestionCount ?? 0,
+        lastSuggestedPosition: recentUsageByItemId.get(id)?.lastSuggestedPosition ?? null,
       }),
     );
     const suggest = (retry: boolean) =>
