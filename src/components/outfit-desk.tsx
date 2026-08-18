@@ -12,6 +12,7 @@ import {
   EyeOff,
   LoaderCircle,
   Pencil,
+  RefreshCw,
   Shirt,
   Trash2,
   X,
@@ -266,9 +267,9 @@ function EditableOutfitGarments({
                   <span className="mt-1 block text-xs text-ink/55">{item.category}</span>
                 )}
               </div>
-              <div className="mt-auto grid grid-cols-2 gap-1 border-t border-line p-2">
+              <div className="mt-auto flex flex-wrap justify-center gap-1 border-t border-line p-2">
                 <Button
-                  className="w-full"
+                  className="relative w-[5.75rem] px-2"
                   type="button"
                   variant="ghost"
                   size="sm"
@@ -276,11 +277,11 @@ function EditableOutfitGarments({
                   onClick={() => onSwapRequest(item.id)}
                   aria-label={`Swap ${accessibleName}`}
                 >
-                  <ArrowLeftRight size={14} aria-hidden="true" />
-                  Swap
+                  <ArrowLeftRight className="absolute left-1.5" size={14} aria-hidden="true" />
+                  <span>Swap</span>
                 </Button>
                 <Button
-                  className="w-full text-red-700 hover:bg-red-50 hover:text-red-700"
+                  className="relative w-[5.75rem] px-2 text-red-700 hover:bg-red-50 hover:text-red-700"
                   type="button"
                   variant="ghost"
                   size="sm"
@@ -289,8 +290,8 @@ function EditableOutfitGarments({
                   aria-label={`Remove ${accessibleName} from this outfit`}
                   aria-describedby={itemIds.length <= 1 ? "outfit-minimum-garment" : undefined}
                 >
-                  <Trash2 size={14} aria-hidden="true" />
-                  Remove
+                  <Trash2 className="absolute left-1.5" size={14} aria-hidden="true" />
+                  <span>Remove</span>
                 </Button>
               </div>
               {itemIds.length <= 1 && (
@@ -527,9 +528,9 @@ export function OutfitDesk({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
-  async function ask(event: React.FormEvent) {
-    event.preventDefault();
+  async function requestSuggestion() {
     const submittedPrompt = prompt.trim();
+    if (!submittedPrompt || loading) return;
     setLoading(true);
     setSaved(false);
     setNotice("");
@@ -559,6 +560,11 @@ export function OutfitDesk({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function ask(event: React.FormEvent) {
+    event.preventDefault();
+    await requestSuggestion();
   }
 
   async function save() {
@@ -826,9 +832,18 @@ export function OutfitDesk({
                 </>
               )}
             </div>
-            <Button className="mt-6 w-full" type="submit" disabled={loading || !prompt.trim()}>
+            <Button
+              className="mt-6 w-full"
+              type="submit"
+              variant={result ? "secondary" : "default"}
+              disabled={loading || !prompt.trim()}
+            >
               {loading && <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />}
-              {loading ? "Putting it together…" : "Suggest an outfit"}
+              {loading
+                ? "Putting it together…"
+                : result
+                  ? "Suggest another outfit"
+                  : "Suggest an outfit"}
             </Button>
           </form>
 
@@ -894,6 +909,20 @@ export function OutfitDesk({
                   />
                 )}
                 <div className="mt-4 flex flex-wrap items-center gap-1">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={requestSuggestion}
+                    disabled={loading || saving || ignoring}
+                  >
+                    {loading ? (
+                      <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <RefreshCw size={15} aria-hidden="true" />
+                    )}
+                    {loading ? "Putting it together…" : "Suggest another outfit"}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
