@@ -3,6 +3,7 @@ import {
   normalizeGarmentMetadata,
   normalizeMetadataList,
   normalizeMetadataText,
+  normalizeSeasons,
   styleTagVocabulary,
 } from "./metadata";
 import { normalizeExistingWardrobeMetadata } from "./metadata-maintenance";
@@ -33,6 +34,14 @@ describe("garment metadata normalization", () => {
       { value: "Minimalist", count: 1 },
     ]);
   });
+
+  it("canonicalizes known seasons while preserving unexpected legacy values", () => {
+    expect(normalizeSeasons(["summer", "Fall", "Monsoon", " autumn "])).toEqual([
+      "Summer",
+      "Autumn",
+      "Monsoon",
+    ]);
+  });
 });
 
 describe("existing metadata maintenance", () => {
@@ -48,7 +57,7 @@ describe("existing metadata maintenance", () => {
         material: " Cotton ",
         fit: " Regular ",
         styleTags: ["Casual", " casual "],
-        seasons: [" Summer ", "summer"],
+        seasons: [" Summer ", "Fall", "summer"],
         formality: "smart casual",
       },
     ]);
@@ -58,7 +67,7 @@ describe("existing metadata maintenance", () => {
       formality: "Smart casual",
       secondaryColors: ["Navy"],
       styleTags: ["Casual"],
-      seasons: ["Summer"],
+      seasons: ["Summer", "Autumn"],
     });
   });
 });

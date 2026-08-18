@@ -10,6 +10,23 @@ export type MetadataVocabulary = {
   seasons?: string[];
 };
 
+export const seasonValues = ["Spring", "Summer", "Autumn", "Winter"] as const;
+
+export function normalizeSeasons(values: Array<string | null | undefined>) {
+  const canonical = new Map(seasonValues.map((season) => [season.toLocaleLowerCase(), season]));
+  canonical.set("fall", "Autumn");
+  const seen = new Set<string>();
+  return values.flatMap((value) => {
+    const normalized = normalizeMetadataText(value);
+    if (!normalized) return [];
+    const season = canonical.get(normalized.toLocaleLowerCase()) ?? normalized;
+    const key = season.toLocaleLowerCase();
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [season];
+  });
+}
+
 export function normalizeMetadataText(value: string | null | undefined) {
   const normalized = value?.trim().replace(/\s+/g, " ") ?? "";
   return normalized || null;
@@ -97,8 +114,6 @@ export function normalizeGarmentMetadata<T extends NormalizableGarmentMetadata>(
     ...(metadata.styleTags !== undefined
       ? { styleTags: normalizeMetadataList(metadata.styleTags, vocabulary.styleTags) }
       : {}),
-    ...(metadata.seasons !== undefined
-      ? { seasons: normalizeMetadataList(metadata.seasons, vocabulary.seasons) }
-      : {}),
+    ...(metadata.seasons !== undefined ? { seasons: normalizeSeasons(metadata.seasons) } : {}),
   } as T;
 }

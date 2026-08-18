@@ -32,6 +32,7 @@ describe("garment analysis instructions", () => {
     }
 
     expect(garmentAnalysisInstructions).toContain("T-shirt");
+    expect(garmentAnalysisInstructions).toContain("Spring, Summer, Autumn, Winter");
     expect(garmentAnalysisInstructions).toContain("Do not repeat its category");
   });
 

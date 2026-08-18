@@ -3,6 +3,7 @@ import {
   formalityValues,
 } from "@/features/wardrobe/domain/category-groups";
 import type { VocabularyEntry } from "@/features/wardrobe/domain/metadata";
+import { seasonValues } from "@/features/wardrobe/domain/metadata";
 
 export function buildGarmentAnalysisPrompt(existingStyleTags: VocabularyEntry[] = []) {
   const vocabulary = existingStyleTags.length
@@ -30,7 +31,7 @@ fit: Describe the garment's visible cut or silhouette, not how it fits an unseen
 
 styleTags: Return a small set of specific, non-duplicative aesthetic descriptors that would help compare this garment with the rest of a wardrobe. Reuse an existing tag when it represents the same concept, using its exact supplied spelling. Never create capitalization, pluralization, or trivial wording variants. Create a new tag only when it is genuinely distinct, useful across multiple garments, and no more than five tags total. Do not repeat its category, colours, material, fit, seasons, formality, or visible condition as style tags. Do not turn an uncertain interpretation into a definitive style tag.
 
-seasons: List only seasons reasonably supported by the garment's coverage, construction, and apparent material. Do not infer climate or personal preference.
+seasons: Select only from ${seasonValues.join(", ")}. List seasons reasonably supported by the garment's coverage, construction, and apparent material. Do not infer climate or personal preference.
 
 formality: Select exactly one practical level: ${formalityValues.join(", ")}. Do not list occasions or repeat style tags.
 

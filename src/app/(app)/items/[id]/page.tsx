@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 import { requireActiveUser } from "@/features/access/server";
 import { validatedWardrobeReturnTo } from "@/features/wardrobe/domain/filters";
+import { styleTagVocabulary } from "@/features/wardrobe/domain/metadata";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function ItemPage({ params, searchParams }: PageProps<"/items/[id]">) {
@@ -18,7 +19,10 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
   const userId = access.userId;
   const item = await wardrobeService.findOwnedItem(userId, id);
   if (!item) notFound();
-  const photos = await wardrobeService.getOwnedPhotos(userId, id);
+  const [photos, activeItems] = await Promise.all([
+    wardrobeService.getOwnedPhotos(userId, id),
+    wardrobeService.listActive(userId),
+  ]);
 
   return (
     <>
@@ -68,6 +72,7 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
           }}
           canUseAi={access.canUseAi}
           wardrobeHref={wardrobeHref}
+          styleTagSuggestions={styleTagVocabulary(activeItems).map((entry) => entry.value)}
         />
       </div>
     </>
