@@ -30,6 +30,7 @@ export default async function ArchivePage() {
                 name={item.name}
                 category={item.category}
                 coverPhotoId={item.coverPhotoId}
+                photoCount={item.photoCount}
                 archivedLabel={dateFormatter.format(item.archivedAt!)}
               />
             ))}

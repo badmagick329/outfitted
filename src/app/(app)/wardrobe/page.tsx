@@ -3,12 +3,13 @@ import { Images, Plus, Shirt } from "lucide-react";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { WardrobeGrid } from "@/components/wardrobe-grid";
 import { requireActiveUser } from "@/features/access/server";
-import { parseWardrobeFilter } from "@/features/wardrobe/domain/category-groups";
+import { parseWardrobeFilters, wardrobeFacets } from "@/features/wardrobe/domain/filters";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function WardrobePage({ searchParams }: PageProps<"/wardrobe">) {
   const items = await wardrobeService.listActiveCards((await requireActiveUser()).userId);
-  const activeFilter = parseWardrobeFilter((await searchParams).category);
+  const facets = wardrobeFacets(items);
+  const filters = parseWardrobeFilters(await searchParams, facets);
 
   return (
     <>
@@ -40,15 +41,17 @@ export default async function WardrobePage({ searchParams }: PageProps<"/wardrob
 
       {items.length ? (
         <WardrobeGrid
-          key={activeFilter}
-          initialFilter={activeFilter}
+          filters={filters}
+          facets={facets}
           items={items.map((item) => ({
             id: item.id,
             name: item.name,
             category: item.category,
             categoryGroup: item.categoryGroup,
+            styleTags: item.styleTags,
             analysisStatus: item.analysisStatus,
             coverPhotoId: item.coverPhotoId,
+            photoCount: item.photoCount,
           }))}
         />
       ) : (

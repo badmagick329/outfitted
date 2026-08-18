@@ -65,4 +65,23 @@ describe("LocalStorageProvider", () => {
       code: "ENOENT",
     });
   });
+
+  it("rotates stored display and thumbnail variants", async () => {
+    const { storage } = await temporaryStorage();
+    const saved = await storage.saveImage(await portraitImage(), "user-1");
+    const rotated = await storage.rotateImage(saved.key, "user-1", "right");
+
+    await expect(sharp(await storage.read(rotated.key)).metadata()).resolves.toMatchObject({
+      width: 1600,
+      height: 1200,
+      format: "webp",
+    });
+    await expect(
+      sharp(await storage.read(rotated.key, "thumbnail")).metadata(),
+    ).resolves.toMatchObject({
+      width: 640,
+      height: 480,
+      format: "webp",
+    });
+  });
 });

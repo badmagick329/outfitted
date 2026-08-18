@@ -15,6 +15,7 @@ import type {
 } from "../domain/ports";
 import type { WardrobeRepository } from "../domain/repository";
 import type { ImageVariant } from "@/lib/storage";
+import { maxPhotosPerGarment } from "../domain/photo-files";
 
 type Dependencies = {
   repository: WardrobeRepository;
@@ -119,6 +120,116 @@ export class WardrobeService {
   async update(ownerId: string, itemId: string, values: UpdateWardrobeItemInput) {
     await this.getOwnedItem(ownerId, itemId);
     await this.dependencies.repository.updateOwned(ownerId, itemId, values);
+  }
+
+  private async prepareFiles(ownerId: string, files: File[], startPosition: number) {
+    const uploads = await Promise.all(
+      files.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        return { buffer, contentHash: createHash("sha256").update(buffer).digest("hex") };
+      }),
+    );
+    if (new Set(uploads.map((upload) => upload.contentHash)).size !== uploads.length)
+      throw conflict(
+        "The same image was selected more than once. Remove the duplicate and try again.",
+      );
+    for (const upload of uploads) {
+      if (
+        await this.dependencies.repository.findOwnedPhotoByContentHash(ownerId, upload.contentHash)
+      )
+        throw conflict("That exact image is already in your wardrobe.");
+    }
+    const saved: Array<{
+      key: string;
+      width: number;
+      height: number;
+      position: number;
+      contentHash: string;
+    }> = [];
+    try {
+      for (const [index, upload] of uploads.entries())
+        saved.push({
+          ...(await this.dependencies.storage.saveImage(upload.buffer, ownerId)),
+          position: startPosition + index,
+          contentHash: upload.contentHash,
+        });
+      return saved;
+    } catch (error) {
+      await Promise.allSettled(saved.map((image) => this.dependencies.storage.delete(image.key)));
+      throw error;
+    }
+  }
+
+  async addPhotos(ownerId: string, itemId: string, files: File[]) {
+    const existing = await this.getOwnedPhotos(ownerId, itemId);
+    if (existing.length + files.length > maxPhotosPerGarment)
+      throw conflict("A garment can have up to six photos.");
+    const saved = await this.prepareFiles(ownerId, files, existing.length);
+    try {
+      return await this.dependencies.repository.addPhotos(ownerId, itemId, saved);
+    } catch (error) {
+      await Promise.allSettled(saved.map((image) => this.dependencies.storage.delete(image.key)));
+      throw error;
+    }
+  }
+
+  async replacePhoto(ownerId: string, photoId: string, file: File) {
+    const old = await this.dependencies.repository.findOwnedPhoto(ownerId, photoId);
+    if (!old) throw notFound("Photo not found");
+    const [saved] = await this.prepareFiles(ownerId, [file], old.position);
+    try {
+      const photos = await this.dependencies.repository.replacePhoto(ownerId, photoId, saved);
+      void this.dependencies.storage
+        .delete(old.storageKey)
+        .catch((error) => console.error("Couldn’t clean up replaced photo", error));
+      return photos;
+    } catch (error) {
+      await this.dependencies.storage.delete(saved.key).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async rotatePhoto(ownerId: string, photoId: string, direction: "left" | "right") {
+    const old = await this.dependencies.repository.findOwnedPhoto(ownerId, photoId);
+    if (!old) throw notFound("Photo not found");
+    const savedImage = await this.dependencies.storage.rotateImage(
+      old.storageKey,
+      ownerId,
+      direction,
+    );
+    const saved = { ...savedImage, position: old.position, contentHash: old.contentHash ?? "" };
+    try {
+      const photos = await this.dependencies.repository.replacePhoto(ownerId, photoId, saved);
+      void this.dependencies.storage
+        .delete(old.storageKey)
+        .catch((error) => console.error("Couldn’t clean up rotated photo", error));
+      return photos;
+    } catch (error) {
+      await this.dependencies.storage.delete(saved.key).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async setMainPhoto(ownerId: string, photoId: string) {
+    if (!(await this.dependencies.repository.findOwnedPhoto(ownerId, photoId)))
+      throw notFound("Photo not found");
+    return this.dependencies.repository.setMainPhoto(ownerId, photoId);
+  }
+
+  async removePhoto(ownerId: string, photoId: string) {
+    if (!(await this.dependencies.repository.findOwnedPhoto(ownerId, photoId)))
+      throw notFound("Photo not found");
+    try {
+      const result = await this.dependencies.repository.removePhoto(ownerId, photoId);
+      void this.dependencies.storage
+        .delete(result.removed.storageKey)
+        .catch((error) => console.error("Couldn’t clean up removed photo", error));
+      return result.photos;
+    } catch (error) {
+      if (error instanceof Error && error.message === "Cannot remove final photo")
+        throw conflict("A garment must keep at least one photo.");
+      throw error;
+    }
   }
 
   async requestAnalysis(ownerId: string, itemId: string) {

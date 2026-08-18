@@ -218,7 +218,7 @@ export function ItemEditor({
         setError(await messageFrom(response, "Couldn’t update this garment."));
         return;
       }
-      router.push(restoring ? "/wardrobe" : "/archive");
+      router.push(restoring ? wardrobeHref : "/archive");
       router.refresh();
     } catch {
       setError("Couldn’t update this garment. Check your connection and try again.");

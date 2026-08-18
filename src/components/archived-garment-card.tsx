@@ -12,6 +12,7 @@ type ArchivedGarmentCardProps = {
   name: string;
   category: string | null;
   coverPhotoId: string | null;
+  photoCount?: number;
   archivedLabel: string;
 };
 
@@ -25,6 +26,7 @@ export function ArchivedGarmentCard({
   name,
   category,
   coverPhotoId,
+  photoCount,
   archivedLabel,
 }: ArchivedGarmentCardProps) {
   const router = useRouter();
@@ -59,7 +61,7 @@ export function ArchivedGarmentCard({
   if (restored) return null;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-line bg-canvas shadow-[4px_4px_0_var(--color-mist)]">
+    <article className="relative overflow-hidden rounded-2xl border border-line bg-canvas shadow-[4px_4px_0_var(--color-mist)]">
       <Link
         href={`/items/${id}`}
         aria-label={`Open archived ${accessibleName}`}
@@ -77,6 +79,14 @@ export function ArchivedGarmentCard({
           <div className="grid aspect-[4/5] place-items-center bg-mist text-teal/45">
             <Shirt size={36} aria-hidden="true" />
           </div>
+        )}
+        {photoCount && photoCount > 1 && (
+          <span
+            aria-label={`${photoCount} photos`}
+            className="absolute left-2 top-2 rounded-full bg-ink/75 px-2 py-1 text-xs font-bold text-canvas"
+          >
+            {photoCount} photos
+          </span>
         )}
         {hasVisibleDetails && (
           <div className="border-t border-line px-4 py-3">

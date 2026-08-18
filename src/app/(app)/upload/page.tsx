@@ -9,11 +9,7 @@ export default function UploadPage() {
     <>
       <MemberPageHeader
         title="Add a garment"
-        description={
-          <p>
-            Start with one clear photo. It will be optimized and stored privately with the garment.
-          </p>
-        }
+        description={<p>Add photos of the same garment from different angles.</p>}
         backLink={<WardrobeBackLink />}
         tone="peach"
       />
