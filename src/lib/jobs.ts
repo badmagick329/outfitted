@@ -12,8 +12,12 @@ export async function getBoss() {
   }
   return boss;
 }
-export async function enqueueAnalysis(itemId: string) {
-  return (await getBoss()).send(ANALYZE_ITEM_JOB, { itemId }, { retryLimit: 3, retryDelay: 30 });
+export async function enqueueAnalysis(itemId: string, options: { forceOverwrite?: boolean } = {}) {
+  return (await getBoss()).send(
+    ANALYZE_ITEM_JOB,
+    { itemId, forceOverwrite: Boolean(options.forceOverwrite) },
+    { retryLimit: 3, retryDelay: 30, singletonKey: itemId },
+  );
 }
 export async function enqueueWardrobeReview(reviewId: string) {
   return (await getBoss()).send(

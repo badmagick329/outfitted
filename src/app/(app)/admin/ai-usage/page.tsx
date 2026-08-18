@@ -4,6 +4,7 @@ import { AiUsageChart } from "@/components/ai-usage-chart";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { getAiUsageDashboard, type AiUsageRange } from "@/features/ai-usage/server";
 import { requireAdminUser } from "@/features/access/server";
+import { listManagedUsers } from "@/features/access/server";
 
 const ranges: AiUsageRange[] = [7, 30, 90];
 
@@ -28,11 +29,15 @@ function formatLatency(milliseconds: number) {
 export default async function AiUsagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; user?: string }>;
 }) {
   await requireAdminUser();
-  const range = asRange((await searchParams).range);
-  const dashboard = await getAiUsageDashboard(range);
+  const params = await searchParams;
+  const range = asRange(params.range);
+  const managedUsers = await listManagedUsers();
+  const selectedUser = managedUsers.find((user) => user.id === params.user) ?? null;
+  const dashboard = await getAiUsageDashboard(range, selectedUser?.id);
+  const selectedLabel = selectedUser ? (selectedUser.name ?? selectedUser.email) : "all members";
 
   return (
     <>
@@ -44,25 +49,54 @@ export default async function AiUsagePage({
       <AdminSectionNavigation active="ai-usage" />
 
       <div className="mt-9 space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold tracking-[-0.04em]">Last {range} days</h2>
-          <nav
-            className="flex rounded-full border border-line bg-canvas p-1"
-            aria-label="Usage period"
-          >
-            {ranges.map((days) => (
-              <Link
-                key={days}
-                href={`/admin/ai-usage?range=${days}`}
-                aria-current={range === days ? "page" : undefined}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry ${
-                  range === days ? "bg-berry text-canvas" : "text-ink/55 hover:text-ink"
-                }`}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-[-0.04em]">Last {range} days</h2>
+            <p className="mt-1 text-sm text-ink/60">Showing {selectedLabel}.</p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <form action="/admin/ai-usage" className="flex items-end gap-2">
+              <input type="hidden" name="range" value={range} />
+              <label className="text-xs font-bold text-ink/70">
+                Member
+                <select
+                  name="user"
+                  defaultValue={selectedUser?.id ?? ""}
+                  className="mt-1 block max-w-64 rounded-full border border-line bg-canvas px-3 py-1.5 text-sm font-normal outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
+                >
+                  <option value="">All members</option>
+                  {managedUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name ? `${user.name} (${user.email})` : user.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="rounded-full border border-teal/30 bg-canvas px-3 py-1.5 text-xs font-bold text-teal hover:border-teal"
               >
-                {days} days
-              </Link>
-            ))}
-          </nav>
+                Apply
+              </button>
+            </form>
+            <nav
+              className="flex rounded-full border border-line bg-canvas p-1"
+              aria-label="Usage period"
+            >
+              {ranges.map((days) => (
+                <Link
+                  key={days}
+                  href={`/admin/ai-usage?range=${days}${selectedUser ? `&user=${encodeURIComponent(selectedUser.id)}` : ""}`}
+                  aria-current={range === days ? "page" : undefined}
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry ${
+                    range === days ? "bg-berry text-canvas" : "text-ink/55 hover:text-ink"
+                  }`}
+                >
+                  {days} days
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="AI usage summary">
@@ -103,7 +137,9 @@ export default async function AiUsagePage({
         <section className="rounded-3xl border border-line bg-canvas p-5 shadow-[5px_5px_0_var(--color-peach)] sm:p-7">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-bold tracking-[-0.04em]">Daily estimated cost</h2>
+              <h2 className="text-2xl font-bold tracking-[-0.04em]">
+                Daily estimated cost for {selectedLabel}
+              </h2>
               <p className="mt-1 text-sm text-ink/60">Based on usage returned by the model.</p>
             </div>
             <span className="font-mono text-[10px] font-bold uppercase tracking-wide text-ink/45">

@@ -335,6 +335,22 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
       .where(and(eq(wardrobeItems.id, itemId), eq(wardrobeItems.userId, ownerId)));
   }
 
+  async reserveAnalysis(ownerId: string, itemId: string) {
+    const rows = await db
+      .update(wardrobeItems)
+      .set({ analysisStatus: "pending", analysisError: null, updatedAt: new Date() })
+      .where(
+        and(
+          eq(wardrobeItems.id, itemId),
+          eq(wardrobeItems.userId, ownerId),
+          isNull(wardrobeItems.archivedAt),
+          sql`${wardrobeItems.analysisStatus} not in ('pending', 'processing')`,
+        ),
+      )
+      .returning({ id: wardrobeItems.id });
+    return rows.length === 1;
+  }
+
   async setAnalysisNotRequested(itemId: string) {
     await db
       .update(wardrobeItems)
@@ -349,21 +365,22 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
       .where(eq(wardrobeItems.id, itemId));
   }
 
-  async completeAnalysis(itemId: string, result: WardrobeAnalysis, preserveEdits: boolean) {
+  async completeAnalysis(itemId: string, result: WardrobeAnalysis, forceOverwrite: boolean) {
     const item = await this.findById(itemId);
     if (!item) return;
     await db
       .update(wardrobeItems)
       .set(
-        preserveEdits
+        !forceOverwrite && Boolean(item.metadataEditedAt)
           ? { analysisStatus: "complete", analysisError: null, updatedAt: new Date() }
           : {
               ...result,
-              name: item.name ? item.name : result.name,
+              name: forceOverwrite ? result.name : item.name ? item.name : result.name,
               material: result.material ?? null,
               fit: result.fit ?? null,
               analysisStatus: "complete",
               analysisError: null,
+              metadataEditedAt: forceOverwrite ? null : item.metadataEditedAt,
               updatedAt: new Date(),
             },
       )

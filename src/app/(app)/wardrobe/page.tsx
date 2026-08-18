@@ -2,12 +2,22 @@ import Link from "next/link";
 import { Images, Plus, Shirt } from "lucide-react";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { WardrobeGrid } from "@/components/wardrobe-grid";
+import { ReanalyseAllAction } from "@/components/reanalyse-all-action";
 import { requireActiveUser } from "@/features/access/server";
+import { hasAvailableFeatureGrant } from "@/features/feature-grants/server";
 import { parseWardrobeFilters, wardrobeFacets } from "@/features/wardrobe/domain/filters";
 import { wardrobeService } from "@/features/wardrobe/server";
 
 export default async function WardrobePage({ searchParams }: PageProps<"/wardrobe">) {
-  const items = await wardrobeService.listActiveCards((await requireActiveUser()).userId);
+  const access = await requireActiveUser();
+  const items = await wardrobeService.listActiveCards(access.userId);
+  const eligibleCount = items.filter(
+    (item) => item.analysisStatus !== "pending" && item.analysisStatus !== "processing",
+  ).length;
+  const canReanalyse =
+    access.isAdmin ||
+    (access.canUseAi &&
+      (await hasAvailableFeatureGrant(access.userId, "bulk_wardrobe_reanalysis")));
   const facets = wardrobeFacets(items);
   const filters = parseWardrobeFilters(await searchParams, facets);
 
@@ -22,6 +32,9 @@ export default async function WardrobePage({ searchParams }: PageProps<"/wardrob
         }
         action={
           <div className="flex flex-wrap gap-3">
+            {canReanalyse && (
+              <ReanalyseAllAction activeCount={items.length} eligibleCount={eligibleCount} />
+            )}
             <Link
               href="/upload/batch"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-teal/30 bg-canvas px-5 py-3 text-sm font-bold text-teal transition hover:border-teal hover:bg-mist focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry"

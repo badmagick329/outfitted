@@ -33,9 +33,14 @@ export interface WardrobeRepository {
   listInProgress(ownerId: string): Promise<AnalysisStatus[]>;
   updateOwned(ownerId: string, itemId: string, values: UpdateWardrobeItemInput): Promise<void>;
   setAnalysisPending(ownerId: string, itemId: string): Promise<void>;
+  reserveAnalysis(ownerId: string, itemId: string): Promise<boolean>;
   setAnalysisNotRequested(itemId: string): Promise<void>;
   setAnalysisProcessing(itemId: string): Promise<void>;
-  completeAnalysis(itemId: string, result: WardrobeAnalysis, preserveEdits: boolean): Promise<void>;
+  completeAnalysis(
+    itemId: string,
+    result: WardrobeAnalysis,
+    forceOverwrite: boolean,
+  ): Promise<void>;
   failAnalysis(itemId: string, message: string): Promise<void>;
   deleteOwned(ownerId: string, itemId: string): Promise<void>;
 }

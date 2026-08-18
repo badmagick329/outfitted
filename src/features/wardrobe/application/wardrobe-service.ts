@@ -255,7 +255,8 @@ export class WardrobeService {
 
   async requestAnalysis(ownerId: string, itemId: string) {
     await this.getOwnedItem(ownerId, itemId);
-    await this.dependencies.repository.setAnalysisPending(ownerId, itemId);
+    if (!(await this.dependencies.repository.reserveAnalysis(ownerId, itemId)))
+      throw conflict("This garment is already waiting to be analysed.");
     try {
       await this.dependencies.jobs.enqueueAnalysis(itemId);
     } catch {
@@ -265,6 +266,46 @@ export class WardrobeService {
       );
       throw infrastructureFailure("We couldn’t queue analysis. Please try again.");
     }
+  }
+
+  async getBulkReanalysisAvailability(ownerId: string) {
+    const active = await this.dependencies.repository.listActive(ownerId);
+    return {
+      activeCount: active.length,
+      eligibleCount: active.filter(
+        (item) => item.analysisStatus !== "pending" && item.analysisStatus !== "processing",
+      ).length,
+    };
+  }
+
+  async queueBulkReanalysis(ownerId: string) {
+    const active = await this.dependencies.repository.listActive(ownerId);
+    let queued = 0;
+    let skipped = 0;
+    let failed = 0;
+    await Promise.allSettled(
+      active.map(async (item) => {
+        if (item.analysisStatus === "pending" || item.analysisStatus === "processing") {
+          skipped += 1;
+          return;
+        }
+        if (!(await this.dependencies.repository.reserveAnalysis(ownerId, item.id))) {
+          skipped += 1;
+          return;
+        }
+        try {
+          await this.dependencies.jobs.enqueueAnalysis(item.id, { forceOverwrite: true });
+          queued += 1;
+        } catch {
+          failed += 1;
+          await this.dependencies.repository.failAnalysis(
+            item.id,
+            "Unable to queue re-analysis. Please try again.",
+          );
+        }
+      }),
+    );
+    return { queued, skipped, failed };
   }
 
   async delete(ownerId: string, itemId: string) {
@@ -277,9 +318,13 @@ export class WardrobeService {
     await this.dependencies.repository.deleteOwned(ownerId, itemId);
   }
 
-  async analyze(itemId: string, canUseAi: (ownerId: string) => Promise<boolean>) {
+  async analyze(
+    itemId: string,
+    canUseAi: (ownerId: string) => Promise<boolean>,
+    forceOverwrite = false,
+  ) {
     const item = await this.dependencies.repository.findById(itemId);
-    if (!item || item.analysisStatus === "complete") return;
+    if (!item || (!forceOverwrite && item.analysisStatus === "complete")) return;
     if (!(await canUseAi(item.userId))) {
       await this.dependencies.repository.setAnalysisNotRequested(itemId);
       return;
@@ -320,7 +365,7 @@ export class WardrobeService {
       await this.dependencies.repository.completeAnalysis(
         itemId,
         { ...normalized, categoryGroup: categoryGroupForCategory(normalized.category) },
-        Boolean(item.metadataEditedAt),
+        forceOverwrite,
       );
     } catch (error) {
       await this.dependencies.repository.failAnalysis(

@@ -38,6 +38,18 @@ export async function getCurrentAccess(): Promise<CurrentAccess | null> {
   };
 }
 
+export async function getUserAccessById(userId: string): Promise<CurrentAccess | null> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) return null;
+  const resolved = resolveAccountAccess(user, adminEmails());
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    ...resolved,
+  };
+}
+
 export async function requireActiveUser() {
   const access = await getCurrentAccess();
   if (!access) throw unauthorized();

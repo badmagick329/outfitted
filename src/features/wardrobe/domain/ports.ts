@@ -3,7 +3,9 @@ import type { GarmentAnalysisResult } from "@/lib/ai";
 import type { VocabularyEntry } from "./metadata";
 import type { StoredImage, StorageProvider } from "@/lib/storage";
 
-export type AnalysisJobQueue = { enqueueAnalysis(itemId: string): Promise<unknown> };
+export type AnalysisJobQueue = {
+  enqueueAnalysis(itemId: string, options?: { forceOverwrite?: boolean }): Promise<unknown>;
+};
 export type WardrobeAi = {
   readonly model?: string;
   analyze(
