@@ -50,5 +50,5 @@ AVAILABLE WARDROBE ITEMS
 ${JSON.stringify(wardrobe)}
 ${exclusionContext}
 
-You may recommend only items in AVAILABLE WARDROBE ITEMS. No candidate may reproduce an exact saved or ignored garment combination; treat those combinations as unordered sets. For each candidate, write recommendation as concise Markdown that explains how to wear that candidate. Every mention of a chosen garment must be a Markdown link in exactly this format: [Garment name](item:THE_ITEM_UUID). Use only IDs from the wardrobe data. Do not use external links, images or HTML. Each candidate's referencedItemIds must contain every garment in that candidate exactly once and no other IDs.`;
+You may recommend only items in AVAILABLE WARDROBE ITEMS. No candidate may reproduce an exact saved or ignored garment combination; treat those combinations as unordered sets. For each candidate, write recommendation as concise Markdown that explains how to wear that candidate. Every mention of a chosen garment must be a Markdown link in exactly this format: [Garment name](item:THE_ITEM_UUID). Use only IDs from the wardrobe data. Do not use external links, images or HTML. The set of IDs in recommendation item: links must exactly equal referencedItemIds; include each selected ID exactly once in referencedItemIds and no others. A mismatch makes the candidate unusable.`;
 }

@@ -20,6 +20,10 @@ const item = {
   excludedFromOutfitSuggestions: false,
 };
 
+function linkedRecommendation(...itemIds: string[]) {
+  return `Wear ${itemIds.map((itemId) => `[${itemId}](item:${itemId})`).join(" with ")}.`;
+}
+
 function aiResult(
   candidates:
     | { recommendation: string; rationale: string; referencedItemIds: string[] }
@@ -29,6 +33,9 @@ function aiResult(
     data: {
       candidates: (Array.isArray(candidates) ? candidates : [candidates]).map((candidate) => ({
         ...candidate,
+        recommendation: candidate.recommendation.includes("(item:")
+          ? candidate.recommendation
+          : linkedRecommendation(...candidate.referencedItemIds),
         suitabilityTier: "A" as const,
       })),
     },
@@ -44,7 +51,7 @@ function aiResult(
 }
 
 describe("OutfitService.create", () => {
-  it("filters AI references to the owner’s active wardrobe", async () => {
+  it("rejects an unavailable AI reference rather than truncating the candidate", async () => {
     const repository = {
       listActiveWardrobe: vi.fn().mockResolvedValue([item]),
       listExcludedItemIds: vi.fn().mockResolvedValue([]),
@@ -52,21 +59,37 @@ describe("OutfitService.create", () => {
       createSuggestion: vi.fn().mockResolvedValue({ id: "suggestion-1" }),
     } as unknown as OutfitRepository;
     const ai = {
-      suggest: vi.fn().mockResolvedValue(
-        aiResult({
-          recommendation: "Try the shirt",
-          rationale: "A good match",
-          referencedItemIds: ["item-1", "other-user-item"],
-        }),
-      ),
+      suggest: vi
+        .fn()
+        .mockResolvedValueOnce(
+          aiResult({
+            recommendation: linkedRecommendation("item-1", "other-user-item"),
+            rationale: "A good match",
+            referencedItemIds: ["item-1", "other-user-item"],
+          }),
+        )
+        .mockResolvedValueOnce(
+          aiResult({
+            recommendation: linkedRecommendation("item-1"),
+            rationale: "A good match",
+            referencedItemIds: ["item-1"],
+          }),
+        ),
     };
     const service = new OutfitService(repository, ai);
 
     await expect(
       service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
-    ).resolves.toMatchObject({ referencedItemIds: ["item-1"] });
+    ).resolves.toMatchObject({
+      recommendation: linkedRecommendation("item-1"),
+      referencedItemIds: ["item-1"],
+    });
+    expect(ai.suggest).toHaveBeenCalledTimes(2);
     expect(repository.createSuggestion).toHaveBeenCalledWith(
-      expect.objectContaining({ selectedItemIds: ["item-1"] }),
+      expect.objectContaining({
+        selectedItemIds: ["item-1"],
+        recommendation: linkedRecommendation("item-1"),
+      }),
     );
   });
 
@@ -92,7 +115,7 @@ describe("OutfitService.create", () => {
             referencedItemIds: ["item-1", "item-1"],
           },
           {
-            recommendation: "Wear the trousers",
+            recommendation: linkedRecommendation("item-2"),
             rationale: "A fresher option",
             referencedItemIds: ["item-2"],
           },
@@ -104,14 +127,14 @@ describe("OutfitService.create", () => {
     await expect(
       service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
     ).resolves.toMatchObject({
-      recommendation: "Wear the trousers",
+      recommendation: linkedRecommendation("item-2"),
       referencedItemIds: ["item-2"],
     });
     expect(ai.suggest).toHaveBeenCalledTimes(1);
     expect(repository.createSuggestion).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedItemIds: ["item-2"],
-        recommendation: "Wear the trousers",
+        recommendation: linkedRecommendation("item-2"),
         rationale: "A fresher option",
       }),
     );
@@ -324,7 +347,7 @@ describe("OutfitService.create", () => {
         )
         .mockResolvedValueOnce(
           aiResult({
-            recommendation: "Try the trousers",
+            recommendation: linkedRecommendation("item-2"),
             rationale: "A different choice",
             referencedItemIds: ["item-2"],
           }),

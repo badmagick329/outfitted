@@ -6,12 +6,13 @@ import {
   qualityGateCandidates,
   selectCandidateWithDiagnostics,
   validOutfitCandidates,
+  itemIdsFromRecommendation,
   type ValidOutfitCandidate,
 } from "./outfit-candidate-selection";
 
 function candidate(id: string, referencedItemIds: string[]): ValidOutfitCandidate {
   return {
-    recommendation: `Wear ${id}`,
+    recommendation: referencedItemIds.map((itemId) => `[${itemId}](item:${itemId})`).join(" with "),
     rationale: `${id} works`,
     referencedItemIds,
     suitabilityTier: "A",
@@ -20,18 +21,49 @@ function candidate(id: string, referencedItemIds: string[]): ValidOutfitCandidat
 }
 
 describe("outfit candidate validation", () => {
-  it("sanitises IDs, removes duplicates, and rejects empty, excluded, duplicate, or incomplete candidates", () => {
+  it("extracts item IDs from Markdown links", () => {
+    expect(
+      itemIdsFromRecommendation(
+        "Wear [Teal shirt](item:item-1) with [Stone trousers](item:item-2).",
+      ),
+    ).toEqual(["item-1", "item-2"]);
+  });
+
+  it("accepts candidates only when their eligible linked and referenced IDs match", () => {
     const candidates = validOutfitCandidates(
       [
-        candidate("valid", ["item-1", "item-1", "unknown"]),
-        candidate("duplicate", ["item-1"]),
-        candidate("empty", ["unknown"]),
+        candidate("valid", ["item-1"]),
+        candidate("unavailable", ["item-1", "unknown"]),
+        candidate("duplicate", ["item-1", "item-1"]),
         candidate("excluded", ["item-2"]),
         candidate("missing-start", ["item-3"]),
       ],
       new Set(["item-1", "item-2", "item-3"]),
       new Set(["item-2"]),
       "item-1",
+    );
+
+    expect(candidates).toEqual([
+      expect.objectContaining({ referencedItemIds: ["item-1"], signature: "item-1" }),
+    ]);
+  });
+
+  it("rejects candidates when linked and referenced garment sets differ", () => {
+    const base = candidate("base", ["item-1"]);
+    const candidates = validOutfitCandidates(
+      [
+        {
+          ...base,
+          recommendation: "Wear [Teal shirt](item:item-1) with [Stone trousers](item:item-2).",
+        },
+        { ...base, referencedItemIds: ["item-1", "item-2"] },
+        {
+          ...base,
+          recommendation: "Wear [Teal shirt](item:item-1) and repeat [Teal shirt](item:item-1).",
+        },
+      ],
+      new Set(["item-1", "item-2"]),
+      new Set(),
     );
 
     expect(candidates).toEqual([

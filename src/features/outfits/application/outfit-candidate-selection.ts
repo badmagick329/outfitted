@@ -28,6 +28,10 @@ export type OutfitSelectionDiagnosticsV1 = {
   selectedNovelty: OutfitNovelty;
 };
 
+export function itemIdsFromRecommendation(recommendation: string) {
+  return [...recommendation.matchAll(/\[[^\]]*\]\(item:([^\s)]+)\)/g)].map((match) => match[1]!);
+}
+
 export function recentSuggestionUsageByItemId(history: string[][]) {
   const usageByItemId = new Map<string, RecentSuggestionUsage>();
   for (const [position, itemIds] of history.entries()) {
@@ -49,12 +53,15 @@ export function validOutfitCandidates(
   const valid: ValidOutfitCandidate[] = [];
   const seenSignatures = new Set<string>();
   for (const candidate of candidates) {
-    const referencedItemIds = candidate.referencedItemIds.filter(
-      (itemId, index) =>
-        allowedItemIds.has(itemId) && candidate.referencedItemIds.indexOf(itemId) === index,
-    );
+    const referencedItemIds = candidate.referencedItemIds;
+    const linkedItemIds = new Set(itemIdsFromRecommendation(candidate.recommendation));
+    const referencedItemIdSet = new Set(referencedItemIds);
     if (
       !referencedItemIds.length ||
+      referencedItemIdSet.size !== referencedItemIds.length ||
+      referencedItemIds.some((itemId) => !allowedItemIds.has(itemId)) ||
+      linkedItemIds.size !== referencedItemIdSet.size ||
+      [...linkedItemIds].some((itemId) => !referencedItemIdSet.has(itemId)) ||
       (selectedItemId && !referencedItemIds.includes(selectedItemId))
     )
       continue;

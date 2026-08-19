@@ -67,7 +67,8 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(prompt).toContain("Do not include filler merely to reach four candidates");
     expect(prompt).toContain("Maximise meaningful garment variation across the candidate set");
     expect(prompt).toContain("do not build every candidate around the same dominant top");
-    expect(prompt).toContain("Each candidate's referencedItemIds must contain every garment");
+    expect(prompt).toContain("must exactly equal referencedItemIds");
+    expect(prompt).toContain("A mismatch makes the candidate unusable");
     expect(prompt).toContain("identify plausible candidates for each role");
     expect(prompt).toContain("All candidates must include an explicitly selected garment");
     expect(prompt).toContain("Markdown link in exactly this format");
