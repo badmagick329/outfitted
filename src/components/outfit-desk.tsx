@@ -37,6 +37,11 @@ type Result = {
   referencedItemIds: string[];
 };
 
+type ResultRequest = {
+  prompt: string;
+  selectedItemId: string | null;
+};
+
 type SavedOutfit = {
   id: string;
   suggestionId: string;
@@ -513,6 +518,7 @@ export function OutfitDesk({
   const [promptNotice, setPromptNotice] = useState("");
   const [selectedItemId, setSelectedItemId] = useState(initialStartingItem?.id ?? "");
   const [result, setResult] = useState<Result | null>(null);
+  const [resultRequest, setResultRequest] = useState<ResultRequest | null>(null);
   const [resultName, setResultName] = useState("");
   const [savedOutfits, setSavedOutfits] = useState(initialSavedOutfits);
   const [loading, setLoading] = useState(false);
@@ -526,10 +532,18 @@ export function OutfitDesk({
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const trimmedPrompt = prompt.trim();
+  const isSameRequestAsResult = Boolean(
+    result &&
+    resultRequest &&
+    trimmedPrompt === resultRequest.prompt &&
+    (selectedItemId || null) === resultRequest.selectedItemId,
+  );
 
   async function requestSuggestion() {
-    const submittedPrompt = prompt.trim();
+    const submittedPrompt = trimmedPrompt;
     if (!submittedPrompt || loading) return;
+    const requestMode = isSameRequestAsResult ? "another" : "initial";
     setLoading(true);
     setSaved(false);
     setNotice("");
@@ -541,8 +555,8 @@ export function OutfitDesk({
         body: JSON.stringify({
           prompt: submittedPrompt,
           selectedItemId: selectedItemId || undefined,
-          requestMode: result ? "another" : "initial",
-          previousItemIds: result?.referencedItemIds,
+          requestMode,
+          ...(requestMode === "another" ? { previousItemIds: result?.referencedItemIds } : {}),
         }),
       });
       if (!response.ok) {
@@ -551,6 +565,7 @@ export function OutfitDesk({
       }
       const payload = (await response.json()) as Result;
       setResult(payload);
+      setResultRequest({ prompt: submittedPrompt, selectedItemId: selectedItemId || null });
       setResultName(submittedPrompt.slice(0, 80));
       setSaved(savedOutfits.some((outfit) => outfit.suggestionId === payload.id));
       setSwappingItemId(null);
@@ -634,6 +649,7 @@ export function OutfitDesk({
         return;
       }
       setResult(null);
+      setResultRequest(null);
       setResultName("");
       setSwappingItemId(null);
       setEditingRationale(false);
@@ -836,14 +852,14 @@ export function OutfitDesk({
             <Button
               className="mt-6 w-full"
               type="submit"
-              variant={result ? "secondary" : "default"}
+              variant={isSameRequestAsResult ? "secondary" : "default"}
               disabled={loading || !prompt.trim()}
             >
               {loading && <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />}
               {loading
                 ? "Putting it together…"
-                : result
-                  ? "Suggest another outfit"
+                : isSameRequestAsResult
+                  ? "Suggest a different outfit"
                   : "Suggest an outfit"}
             </Button>
           </form>
