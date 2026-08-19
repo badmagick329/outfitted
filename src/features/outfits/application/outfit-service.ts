@@ -10,8 +10,10 @@ import { canonicalOutfitItemIds, outfitSignature } from "../domain/outfit-signat
 import type { OutfitAi, OutfitAiUsageRecorder, OutfitStyleProfileReader } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
 import {
+  itemsByRole,
+  qualityGateCandidates,
   recentSuggestionUsageByItemId,
-  selectLeastRepetitiveCandidate,
+  selectCandidateWithDiagnostics,
   validOutfitCandidates,
 } from "./outfit-candidate-selection";
 
@@ -26,6 +28,7 @@ export class OutfitService {
   ) {}
 
   async create(ownerId: string, input: CreateOutfitSuggestionInput) {
+    const requestMode = input.requestMode ?? "initial";
     const [activeItems, styleProfile, excludedOutfitItemIds, recentSuggestionItemIds] =
       await Promise.all([
         this.repository.listActiveWardrobe(ownerId),
@@ -39,7 +42,15 @@ export class OutfitService {
     const selected = input.selectedItemId
       ? items.find((item) => item.id === input.selectedItemId)
       : undefined;
-    const request = buildOutfitRequest(input.prompt, selected);
+    if (requestMode === "another") {
+      if (!input.previousItemIds?.length)
+        throw conflict("The outfit currently shown is needed to suggest another option.");
+      const eligibleItemIds = new Set(items.map((item) => item.id));
+      if (input.previousItemIds.some((itemId) => !eligibleItemIds.has(itemId)))
+        throw conflict("One or more garments in the displayed outfit are no longer available.");
+    }
+    const previousItemIds = requestMode === "another" ? input.previousItemIds : undefined;
+    const request = buildOutfitRequest(input.prompt, selected, false, previousItemIds);
     const recentUsageByItemId = recentSuggestionUsageByItemId(recentSuggestionItemIds);
     const wardrobe = items.map(
       ({
@@ -80,7 +91,7 @@ export class OutfitService {
         model: this.ai.model ?? "unknown",
         call: () =>
           this.ai.suggest(
-            retry ? buildOutfitRequest(input.prompt, selected, true) : request,
+            retry ? buildOutfitRequest(input.prompt, selected, true, previousItemIds) : request,
             wardrobe,
             styleProfile,
             excludedOutfitItemIds,
@@ -88,32 +99,58 @@ export class OutfitService {
       });
     const allowedIds = new Set(items.map((item) => item.id));
     const excludedSignatures = new Set(excludedOutfitItemIds.map(outfitSignature));
-    let candidates = validOutfitCandidates(
-      (await suggest(false)).candidates,
-      allowedIds,
-      excludedSignatures,
-      selected?.id,
-    );
-    if (!candidates.length)
-      candidates = validOutfitCandidates(
-        (await suggest(true)).candidates,
-        allowedIds,
-        excludedSignatures,
-        selected?.id,
-      );
+    let attemptCount = 1;
+    let batch = (await suggest(false)).candidates;
+    let generatedCandidateCount = batch.length;
+    let candidates = validOutfitCandidates(batch, allowedIds, excludedSignatures, selected?.id);
+    if (!candidates.length) {
+      attemptCount = 2;
+      batch = (await suggest(true)).candidates;
+      generatedCandidateCount = batch.length;
+      candidates = validOutfitCandidates(batch, allowedIds, excludedSignatures, selected?.id);
+    }
     if (!candidates.length)
       throw conflict("There isn’t a different outfit to suggest from the available garments.");
-    const result = selectLeastRepetitiveCandidate(
-      candidates,
-      recentSuggestionItemIds,
-      selected?.id,
+    const { candidates: qualityPool, selectedSuitabilityTier } = qualityGateCandidates(candidates);
+    if (!selectedSuitabilityTier)
+      throw conflict("There isn’t a different outfit to suggest from the available garments.");
+    const itemRoleById = new Map(
+      items.map((item) => [item.id, item.categoryGroup ?? "other"] as const),
     );
+    const eligibleItemCountByRole = items.reduce<Record<string, number>>((counts, item) => {
+      const role = item.categoryGroup ?? "other";
+      counts[role] = (counts[role] ?? 0) + 1;
+      return counts;
+    }, {});
+    const selection = selectCandidateWithDiagnostics(qualityPool, recentSuggestionItemIds, {
+      selectedItemId: selected?.id,
+      previousItemIds,
+      itemRoleById,
+    });
+    const result = selection.candidate;
     const suggestion = await this.repository.createSuggestion({
       ownerId,
       request: input.prompt,
       selectedItemIds: result.referencedItemIds,
       recommendation: result.recommendation,
       rationale: result.rationale,
+      diagnostics: {
+        version: 1,
+        requestMode,
+        selectedStartingItemId: selected?.id,
+        attemptCount,
+        generatedCandidateCount,
+        validCandidateCount: candidates.length,
+        selectedSuitabilityTier,
+        qualityPoolSize: qualityPool.length,
+        eligibleItemCountByRole,
+        qualityPool: qualityPool.map((candidate) => ({
+          itemIds: candidate.referencedItemIds,
+          itemsByRole: itemsByRole(candidate, itemRoleById),
+        })),
+        variableRoles: selection.variableRoles,
+        selectedNovelty: selection.novelty,
+      },
     });
     return {
       ...suggestion,

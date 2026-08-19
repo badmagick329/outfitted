@@ -85,6 +85,13 @@
       "when": 1787069034278,
       "tag": "0011_nebulous_chronomancer",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787144020300,
+      "tag": "0012_salty_zaran",
+      "breakpoints": true
     }
   ]
 }

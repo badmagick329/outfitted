@@ -3,6 +3,8 @@ import {
   candidateNovelty,
   recentSuggestionUsageByItemId,
   selectLeastRepetitiveCandidate,
+  qualityGateCandidates,
+  selectCandidateWithDiagnostics,
   validOutfitCandidates,
   type ValidOutfitCandidate,
 } from "./outfit-candidate-selection";
@@ -12,6 +14,7 @@ function candidate(id: string, referencedItemIds: string[]): ValidOutfitCandidat
     recommendation: `Wear ${id}`,
     rationale: `${id} works`,
     referencedItemIds,
+    suitabilityTier: "A",
     signature: [...referencedItemIds].sort().join(":"),
   };
 }
@@ -68,10 +71,18 @@ describe("candidate novelty selection", () => {
   it("uses ratios and averages so candidate size does not affect an equally fresh score", () => {
     const usage = recentSuggestionUsageByItemId([]);
 
-    expect(candidateNovelty(candidate("one", ["item-1"]), [], usage)).toEqual([0, 0, 0, 0]);
-    expect(candidateNovelty(candidate("two", ["item-2", "item-3"]), [], usage)).toEqual([
-      0, 0, 0, 0,
-    ]);
+    expect(candidateNovelty(candidate("one", ["item-1"]), [], usage)).toEqual({
+      immediateOverlapRatio: 0,
+      lastThreeUsageAverage: 0,
+      highestRecentUseCount: 0,
+      overallRecentUseAverage: 0,
+    });
+    expect(candidateNovelty(candidate("two", ["item-2", "item-3"]), [], usage)).toEqual({
+      immediateOverlapRatio: 0,
+      lastThreeUsageAverage: 0,
+      highestRecentUseCount: 0,
+      overallRecentUseAverage: 0,
+    });
   });
 
   it("excludes a mandatory selected garment from diversity scoring", () => {
@@ -122,5 +133,47 @@ describe("candidate novelty selection", () => {
 
     expect(random).not.toHaveBeenCalled();
     expect(selected.signature).toBe("item-1");
+  });
+});
+
+describe("quality-gated role-aware selection", () => {
+  it("never lets a fresher lower tier beat an A-tier candidate", () => {
+    const high = { ...candidate("high", ["top-1"]), suitabilityTier: "A" as const };
+    const fallback = { ...candidate("fallback", ["top-2"]), suitabilityTier: "B" as const };
+    expect(qualityGateCandidates([high, fallback]).candidates).toEqual([high]);
+  });
+
+  it("does not score an unchanged role", () => {
+    const selected = selectCandidateWithDiagnostics(
+      [
+        candidate("repeat-top", ["top-fixed", "bottom-1"]),
+        candidate("fresh-bottom", ["top-fixed", "bottom-2"]),
+      ],
+      [["top-fixed", "bottom-1"]],
+      {
+        itemRoleById: new Map([
+          ["top-fixed", "tops"],
+          ["bottom-1", "bottoms"],
+          ["bottom-2", "bottoms"],
+        ]),
+      },
+    );
+    expect(selected.candidate.referencedItemIds).toEqual(["top-fixed", "bottom-2"]);
+    expect(selected.variableRoles).toEqual(["bottoms"]);
+  });
+
+  it("uses a supplied displayed outfit only for immediate comparison", () => {
+    const selected = selectCandidateWithDiagnostics(
+      [candidate("shown", ["top-1"]), candidate("different", ["top-2"])],
+      [],
+      {
+        previousItemIds: ["top-1"],
+        itemRoleById: new Map([
+          ["top-1", "tops"],
+          ["top-2", "tops"],
+        ]),
+      },
+    );
+    expect(selected.candidate.referencedItemIds).toEqual(["top-2"]);
   });
 });

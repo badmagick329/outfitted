@@ -217,6 +217,7 @@ export const outfitSuggestions = pgTable("outfit_suggestions", {
   selectedItemIds: jsonb("selected_item_ids").$type<string[]>().notNull().default([]),
   recommendation: text("recommendation").notNull(),
   rationale: text("rationale"),
+  diagnostics: jsonb("diagnostics").$type<unknown>(),
   ...timestamps,
 });
 

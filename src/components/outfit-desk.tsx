@@ -541,6 +541,8 @@ export function OutfitDesk({
         body: JSON.stringify({
           prompt: submittedPrompt,
           selectedItemId: selectedItemId || undefined,
+          requestMode: result ? "another" : "initial",
+          previousItemIds: result?.referencedItemIds,
         }),
       });
       if (!response.ok) {

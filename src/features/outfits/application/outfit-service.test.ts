@@ -26,7 +26,12 @@ function aiResult(
     | Array<{ recommendation: string; rationale: string; referencedItemIds: string[] }>,
 ) {
   return {
-    data: { candidates: Array.isArray(candidates) ? candidates : [candidates] },
+    data: {
+      candidates: (Array.isArray(candidates) ? candidates : [candidates]).map((candidate) => ({
+        ...candidate,
+        suitabilityTier: "A" as const,
+      })),
+    },
     model: "test-model",
     providerRequestId: "response-1",
     usage: {

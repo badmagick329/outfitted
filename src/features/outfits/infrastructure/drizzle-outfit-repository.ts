@@ -33,6 +33,7 @@ export class DrizzleOutfitRepository implements OutfitRepository {
     selectedItemIds: string[];
     recommendation: string;
     rationale: string;
+    diagnostics: import("../application/outfit-candidate-selection").OutfitSelectionDiagnosticsV1;
   }) {
     const [suggestion] = await db
       .insert(outfitSuggestions)
@@ -42,6 +43,7 @@ export class DrizzleOutfitRepository implements OutfitRepository {
         selectedItemIds: input.selectedItemIds,
         recommendation: input.recommendation,
         rationale: input.rationale,
+        diagnostics: input.diagnostics,
       })
       .returning();
     return suggestion;
