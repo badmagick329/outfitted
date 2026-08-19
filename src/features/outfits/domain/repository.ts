@@ -4,6 +4,7 @@ import type {
   savedOutfits,
   wardrobeItems,
 } from "@/lib/db/schema";
+import type { OutfitSelectionDiagnosticsV1 } from "../application/outfit-candidate-selection";
 
 export type OutfitWardrobeItem = typeof wardrobeItems.$inferSelect;
 export type OutfitSuggestionRecord = typeof outfitSuggestions.$inferSelect;
@@ -23,6 +24,7 @@ export interface OutfitRepository {
     selectedItemIds: string[];
     recommendation: string;
     rationale: string;
+    diagnostics: OutfitSelectionDiagnosticsV1;
   }): Promise<OutfitSuggestionRecord>;
   findSuggestion(ownerId: string, suggestionId: string): Promise<OutfitSuggestionRecord | null>;
   updateSuggestion(

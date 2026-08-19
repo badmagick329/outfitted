@@ -1,0 +1,1 @@
+ALTER TABLE "outfit_suggestions" ADD COLUMN "diagnostics" jsonb;

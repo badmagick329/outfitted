@@ -43,6 +43,7 @@ export const outfitSuggestionCandidateSchema = z.object({
   recommendation: z.string(),
   rationale: z.string(),
   referencedItemIds: z.array(z.string().uuid()),
+  suitabilityTier: z.enum(["A", "B", "C"]),
 });
 export const outfitSuggestionBatchSchema = z.object({
   candidates: z.array(outfitSuggestionCandidateSchema).min(1).max(4),

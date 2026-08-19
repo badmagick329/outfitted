@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGarmentAnalysisPrompt,
+  buildOutfitRequest,
   buildOutfitSuggestionPrompt,
   buildWardrobeReviewPrompt,
 } from "./ai-prompts";
@@ -106,6 +107,7 @@ describe("buildOutfitSuggestionPrompt", () => {
       recommendation: "Wear the shirt",
       rationale: "It works",
       referencedItemIds: ["7c1bcc30-61e7-4b82-bb99-bd73f33d926d"],
+      suitabilityTier: "A",
     };
 
     expect(outfitSuggestionBatchSchema.parse({ candidates: [candidate] }).candidates).toHaveLength(
@@ -115,6 +117,32 @@ describe("buildOutfitSuggestionPrompt", () => {
     expect(() =>
       outfitSuggestionBatchSchema.parse({ candidates: Array(5).fill(candidate) }),
     ).toThrow();
+  });
+
+  it("requires A, B, or C suitability tiers", () => {
+    const candidate = {
+      recommendation: "Wear the shirt",
+      rationale: "It works",
+      referencedItemIds: ["7c1bcc30-61e7-4b82-bb99-bd73f33d926d"],
+    };
+    expect(() => outfitSuggestionBatchSchema.parse({ candidates: [candidate] })).toThrow();
+    expect(() =>
+      outfitSuggestionBatchSchema.parse({ candidates: [{ ...candidate, suitabilityTier: "D" }] }),
+    ).toThrow();
+  });
+
+  it("defines suitability tiers and protects them from variety pressure", () => {
+    const prompt = buildOutfitSuggestionPrompt("Dinner", []);
+    expect(prompt).toContain("A means confidently recommend");
+    expect(prompt).toContain("Never mark a weaker outfit A merely to create variety");
+  });
+
+  it("treats another-outfit context as temporary variety intent, not dislike", () => {
+    const request = buildOutfitRequest("Dinner", undefined, false, [
+      "7c1bcc30-61e7-4b82-bb99-bd73f33d926d",
+    ]);
+    expect(request).toContain("temporary variety intent, not dislike");
+    expect(request).toContain("meaningfully different option");
   });
 
   it("excludes saved and ignored garment combinations by ID without banning individual items", () => {

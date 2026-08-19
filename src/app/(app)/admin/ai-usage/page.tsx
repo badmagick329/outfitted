@@ -3,9 +3,14 @@ import { AdminSectionNavigation } from "@/components/admin-section-navigation";
 import { AiUsageChart } from "@/components/ai-usage-chart";
 import { AiUsageMemberSelect } from "@/components/ai-usage-member-select";
 import { MemberPageHeader } from "@/components/member-page-header";
-import { getAiUsageDashboard, type AiUsageRange } from "@/features/ai-usage/server";
+import {
+  getAiUsageDashboard,
+  getOutfitRecommendationDashboard,
+  type AiUsageRange,
+} from "@/features/ai-usage/server";
 import { requireAdminUser } from "@/features/access/server";
 import { listManagedUsers } from "@/features/access/server";
+import { categoryGroupOptions } from "@/features/wardrobe/domain/category-groups";
 
 const ranges: AiUsageRange[] = [7, 30, 90];
 
@@ -27,6 +32,14 @@ function formatLatency(milliseconds: number) {
   return `${(milliseconds / 1_000).toFixed(1)}s`;
 }
 
+function formatPercent(value: number | null) {
+  return value === null ? "—" : `${Math.round(value * 100)}%`;
+}
+
+function roleLabel(role: string) {
+  return categoryGroupOptions.find((option) => option.value === role)?.label ?? role;
+}
+
 export default async function AiUsagePage({
   searchParams,
 }: {
@@ -37,7 +50,10 @@ export default async function AiUsagePage({
   const range = asRange(params.range);
   const managedUsers = await listManagedUsers();
   const selectedUser = managedUsers.find((user) => user.id === params.user) ?? null;
-  const dashboard = await getAiUsageDashboard(range, selectedUser?.id);
+  const [dashboard, outfitDashboard] = await Promise.all([
+    getAiUsageDashboard(range, selectedUser?.id),
+    getOutfitRecommendationDashboard(range, selectedUser?.id),
+  ]);
   const selectedLabel = selectedUser ? (selectedUser.name ?? selectedUser.email) : "all members";
 
   return (
@@ -186,6 +202,114 @@ export default async function AiUsagePage({
               <strong className="block text-lg">No AI requests in this period</strong>
               <p className="mt-1 text-sm text-ink/60">
                 New garment analyses, outfit suggestions and wardrobe reviews will appear here.
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-3xl border border-line bg-canvas shadow-[5px_5px_0_var(--color-mist)]">
+          <div className="border-b border-line px-5 py-5 sm:px-7">
+            <h2 className="text-2xl font-bold tracking-[-0.04em]">
+              Outfit recommendation behaviour
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-ink/60">
+              Repeated garments can be the right choice when there are few equally suitable
+              alternatives. These figures show whether the available strong options are rotating
+              over time.
+            </p>
+          </div>
+          {outfitDashboard.totalSuggestionCount ? (
+            <>
+              <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4 sm:p-7">
+                {[
+                  {
+                    label: "Instrumented suggestions",
+                    value: outfitDashboard.instrumentedSuggestionCount.toLocaleString("en-GB"),
+                    note: `of ${outfitDashboard.totalSuggestionCount} suggestions`,
+                  },
+                  {
+                    label: "Average strong options",
+                    value: outfitDashboard.averageQualityPoolSize?.toFixed(1) ?? "—",
+                    note: "Candidates left after suitability checks",
+                  },
+                  {
+                    label: "Consecutive garment reuse",
+                    value: formatPercent(outfitDashboard.consecutiveGarmentReuse),
+                    note: "Shared garments with the previous outfit",
+                  },
+                  {
+                    label: "Longest garment streak",
+                    value: outfitDashboard.longestGarmentStreak
+                      ? `${outfitDashboard.longestGarmentStreak}`
+                      : "—",
+                    note: "Consecutive recommendations containing one garment",
+                  },
+                  {
+                    label: "Candidate diversity",
+                    value: formatPercent(outfitDashboard.candidateDiversity),
+                    note: "Difference among equally suitable candidates",
+                  },
+                  {
+                    label: "Shared-item candidate pools",
+                    value: formatPercent(outfitDashboard.sharedItemCandidatePools),
+                    note: "A diagnostic proxy, not a model-failure verdict",
+                  },
+                ].map((metric) => (
+                  <div key={metric.label} className="rounded-2xl border border-line bg-mist/55 p-4">
+                    <strong className="block text-2xl tracking-[-0.04em]">{metric.value}</strong>
+                    <span className="mt-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-ink/55">
+                      {metric.label}
+                    </span>
+                    <span className="mt-2 block text-xs leading-5 text-ink/55">{metric.note}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-line">
+                <div className="px-5 py-5 sm:px-7">
+                  <h3 className="text-lg font-bold tracking-[-0.03em]">
+                    Garment exposure by wardrobe section
+                  </h3>
+                  <p className="mt-1 text-sm text-ink/60">
+                    Shows whether one garment is appearing unusually often in each section.
+                  </p>
+                </div>
+                {outfitDashboard.roleExposure.length ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[44rem] text-left text-sm">
+                      <thead className="border-y border-line bg-mist/55 font-mono text-[10px] uppercase tracking-wide text-ink/50">
+                        <tr>
+                          <th className="px-5 py-3 font-bold sm:px-7">Section</th>
+                          <th className="px-4 py-3 font-bold">Exposures</th>
+                          <th className="px-4 py-3 font-bold">Most shown garment</th>
+                          <th className="px-4 py-3 font-bold">Exposure share</th>
+                          <th className="px-4 py-3 font-bold">Longest streak</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {outfitDashboard.roleExposure.map((role) => (
+                          <tr key={role.role}>
+                            <td className="px-5 py-4 font-bold sm:px-7">{roleLabel(role.role)}</td>
+                            <td className="px-4 py-4">{role.exposureCount}</td>
+                            <td className="px-4 py-4">{role.mostFrequentGarment}</td>
+                            <td className="px-4 py-4">{formatPercent(role.exposureShare)}</td>
+                            <td className="px-4 py-4">{role.longestStreak}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="px-5 pb-6 text-sm text-ink/60 sm:px-7">
+                    No instrumented garment exposures are available yet.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="px-5 py-10 text-center sm:px-7">
+              <strong className="block text-lg">No outfit suggestions in this period</strong>
+              <p className="mt-1 text-sm text-ink/60">
+                Recommendation behaviour will appear after members request outfits.
               </p>
             </div>
           )}
