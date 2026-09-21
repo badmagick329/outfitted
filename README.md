@@ -23,3 +23,15 @@ The application and worker run directly through Bun for fast local reloads. Dock
 
 Existing records are not rewritten during deployment. Run the maintenance command explicitly when
 you want safe whitespace, empty-value, case-only duplicate, and already-controlled-value cleanup.
+
+## Discord notifications
+
+Outfitted can post a message when a member creates an account and when a member adds their first
+garment. This is optional and stays disabled unless `DISCORD_WEBHOOK_URL` is set.
+
+1. Create a webhook in the target channel under Server Settings → Integrations, then copy its URL
+   ([official guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)).
+2. In production, set `DISCORD_WEBHOOK_URL` in Dokploy. Also give the worker `NEXTAUTH_URL` so
+   messages can link to the admin member page.
+3. For local development, set it in `.env`.
+4. Restart the web and worker processes after changing it.

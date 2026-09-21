@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "first_garment_added_at" timestamp with time zone;

@@ -1,8 +1,10 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { getServerSession, type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { accounts, sessions, users, verificationTokens } from "@/lib/db/schema";
+import { notificationService } from "@/features/notifications/server";
 import { unauthorized } from "@/shared/application-error";
 
 export const authOptions: NextAuthOptions = {
@@ -25,6 +27,20 @@ export const authOptions: NextAuthOptions = {
     session: ({ session, user }) => {
       if (session.user) session.user.id = user.id;
       return session;
+    },
+  },
+  events: {
+    // Fires only when the adapter creates a user, so repeat sign-ins never notify. The
+    // enqueue is registered as post-response work and is best-effort, so it can never delay
+    // the OAuth callback or break authentication.
+    createUser: ({ user }) => {
+      after(async () => {
+        try {
+          await notificationService.enqueue("account_created", user.id);
+        } catch (error) {
+          console.error("Couldn’t enqueue the account-created notification", error);
+        }
+      });
     },
   },
 };
