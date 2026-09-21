@@ -18,6 +18,7 @@ import tealShirt from "../../public/landing/teal-camp-shirt.webp";
 import { BrandWordmark } from "@/components/brand";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Marquee } from "@/components/ui/marquee";
+import type { AccessMode } from "@/features/access/contracts";
 
 type Garment = {
   name: string;
@@ -170,7 +171,9 @@ function GarmentStrip() {
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
+  const isPublic = accessMode === "public";
+  const entryCta = isPublic ? "Start your wardrobe" : "Request access";
   return (
     <main className="overflow-hidden bg-canvas text-ink">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
@@ -210,7 +213,7 @@ export function LandingPage() {
                 href="/login"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-berry px-6 py-3.5 text-base font-bold text-canvas shadow-[4px_4px_0_var(--color-citrus)] transition hover:-translate-y-0.5 hover:bg-berry-dark"
               >
-                Request access <ArrowRight size={18} />
+                {entryCta} <ArrowRight size={18} />
               </Link>
               <a
                 href="#how-it-works"
@@ -393,15 +396,16 @@ export function LandingPage() {
               Put your wardrobe within reach.
             </h2>
             <p className="mt-4 max-w-xl text-lg leading-8 text-canvas/72">
-              Request access with your Google account. Once approved, you can start adding your
-              clothes.
+              {isPublic
+                ? "Sign in with your Google account and start adding your clothes right away."
+                : "Request access with your Google account. Once approved, you can start adding your clothes."}
             </p>
           </div>
           <Link
             href="/login"
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-citrus px-6 py-3.5 font-bold text-ink transition hover:-translate-y-0.5 hover:bg-canvas"
           >
-            Request access <ArrowRight size={18} />
+            {entryCta} <ArrowRight size={18} />
           </Link>
         </div>
       </section>
