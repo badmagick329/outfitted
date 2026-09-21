@@ -7,12 +7,7 @@ export default function BatchUploadPage() {
     <>
       <MemberPageHeader
         title="Import several garments"
-        description={
-          <p>
-            Choose one photo for each garment. We’ll create a separate wardrobe record from every
-            photo.
-          </p>
-        }
+        description={<p>Each photo becomes its own garment, so add one photo per garment.</p>}
         backLink={<WardrobeBackLink />}
         tone="peach"
       />

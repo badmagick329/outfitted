@@ -86,11 +86,12 @@ export function LoginView({ accessMode }: { accessMode: AccessMode }) {
             <h2 className="text-4xl font-bold leading-[0.95] tracking-[-0.06em] sm:text-5xl">
               {isPublic ? "Sign in and start." : "Sign in or request access."}
             </h2>
-            <p className="mt-5 leading-7 text-ink/65">
-              {isPublic
-                ? "Sign in with Google and your private wardrobe opens right away."
-                : "Already approved? We’ll open your wardrobe. New here? We’ll register your account for approval."}
-            </p>
+            {!isPublic && (
+              <p className="mt-5 leading-7 text-ink/65">
+                Already have an account? Sign in to open your wardrobe. New here? Signing in creates
+                your account, and an administrator approves it before you can start.
+              </p>
+            )}
 
             <Button
               onClick={() => signIn("google", { callbackUrl: "/wardrobe" })}

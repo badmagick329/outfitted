@@ -276,7 +276,7 @@ export function BatchUploadForm() {
                 : "Choose your garment photos"}
           </strong>
           <p className="mt-2 max-w-lg text-sm leading-6 text-ink/60">
-            Choose one photo for each garment. Each selected image becomes its own garment.
+            Add one photo per garment. Each photo is imported as its own garment.
           </p>
           {!started && (
             <Button

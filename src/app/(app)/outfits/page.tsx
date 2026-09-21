@@ -34,7 +34,7 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
     <>
       <MemberPageHeader
         title="Ask your wardrobe"
-        description={<p>Tell us the plan and we’ll put a look together.</p>}
+        description={<p>Describe the occasion, and we’ll suggest an outfit from your wardrobe.</p>}
         backLink={<WardrobeBackLink />}
         tone="mist"
       />
