@@ -6,6 +6,7 @@ import { accessAuditEvents, users } from "@/lib/db/schema";
 import { forbidden, notFound, unauthorized } from "@/shared/application-error";
 import type { AccessStatus, FeatureTier, UpdateUserAccessInput } from "./contracts";
 import { asAccessStatus, asFeatureTier, normalizeEmail, resolveAccountAccess } from "./policy";
+import { getAccessMode } from "./settings";
 
 export type CurrentAccess = {
   userId: string;
@@ -29,7 +30,7 @@ export async function getCurrentAccess(): Promise<CurrentAccess | null> {
   if (!session?.user?.id) return null;
   const [user] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
   if (!user) return null;
-  const resolved = resolveAccountAccess(user, adminEmails());
+  const resolved = resolveAccountAccess(user, adminEmails(), await getAccessMode());
   return {
     userId: user.id,
     email: user.email,
@@ -41,7 +42,7 @@ export async function getCurrentAccess(): Promise<CurrentAccess | null> {
 export async function getUserAccessById(userId: string): Promise<CurrentAccess | null> {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) return null;
-  const resolved = resolveAccountAccess(user, adminEmails());
+  const resolved = resolveAccountAccess(user, adminEmails(), await getAccessMode());
   return {
     userId: user.id,
     email: user.email,
@@ -72,23 +73,29 @@ export async function requireAdminUser() {
 export async function hasAiAccess(userId: string) {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) return false;
-  return (
-    adminEmails().has(normalizeEmail(user.email)) ||
-    (asAccessStatus(user.accessStatus) === "active" && asFeatureTier(user.featureTier) === "ai")
-  );
+  const resolved = resolveAccountAccess(user, adminEmails(), await getAccessMode());
+  return resolved.accessStatus === "active" && resolved.canUseAi;
 }
 
 export async function listManagedUsers() {
-  const rows = await db.select().from(users).orderBy(asc(users.createdAt));
-  return rows.map((user) => ({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    createdAt: user.createdAt,
-    accessStatus: asAccessStatus(user.accessStatus),
-    featureTier: asFeatureTier(user.featureTier),
-    isAdmin: adminEmails().has(normalizeEmail(user.email)),
-  }));
+  const [rows, accessMode] = await Promise.all([
+    db.select().from(users).orderBy(asc(users.createdAt)),
+    getAccessMode(),
+  ]);
+  const adminEmailSet = adminEmails();
+  return rows.map((user) => {
+    const resolved = resolveAccountAccess(user, adminEmailSet, accessMode);
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      accessStatus: asAccessStatus(user.accessStatus),
+      effectiveAccessStatus: resolved.accessStatus,
+      featureTier: asFeatureTier(user.featureTier),
+      isAdmin: resolved.isAdmin,
+    };
+  });
 }
 
 export async function listAccessAuditEvents() {

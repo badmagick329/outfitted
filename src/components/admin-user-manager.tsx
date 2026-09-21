@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
+import { AccessModeControl } from "@/components/access-mode-control";
 import { Button } from "@/components/ui/button";
+import type { AccessMode } from "@/features/access/contracts";
 
 type AccessStatus = "pending" | "active" | "disabled";
 type FeatureTier = "inventory" | "ai";
@@ -14,6 +16,7 @@ type ManagedUser = {
   email: string;
   joinedLabel: string;
   accessStatus: AccessStatus;
+  effectiveAccessStatus: AccessStatus;
   featureTier: FeatureTier;
   isAdmin: boolean;
   featureGrants: Array<{
@@ -54,7 +57,7 @@ function AccessBadge({ status }: { status: AccessStatus }) {
   );
 }
 
-function ManagedUserRow({ user }: { user: ManagedUser }) {
+function ManagedUserRow({ user, accessMode }: { user: ManagedUser; accessMode: AccessMode }) {
   const router = useRouter();
   const [accessStatus, setAccessStatus] = useState(user.accessStatus);
   const [featureTier, setFeatureTier] = useState(user.featureTier);
@@ -123,7 +126,9 @@ function ManagedUserRow({ user }: { user: ManagedUser }) {
 
   return (
     <form
-      className={`p-5 sm:px-7 ${accessStatus === "pending" ? "bg-citrus/10" : ""}`}
+      className={`p-5 sm:px-7 ${
+        accessStatus === "pending" ? (accessMode === "public" ? "bg-mist/40" : "bg-citrus/10") : ""
+      }`}
       onSubmit={save}
     >
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] sm:items-end">
@@ -137,6 +142,11 @@ function ManagedUserRow({ user }: { user: ManagedUser }) {
             Joined {user.joinedLabel}
             {user.isAdmin ? " · administrator" : ""}
           </span>
+          {accessMode === "public" && accessStatus === "pending" && (
+            <span className="mt-2 inline-flex rounded-full border border-teal/25 bg-mist px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-teal-dark">
+              Can enter now · public mode
+            </span>
+          )}
         </div>
         <label className="block text-xs font-bold text-ink/70">
           Access
@@ -187,7 +197,11 @@ function ManagedUserRow({ user }: { user: ManagedUser }) {
         <h3 className="text-sm font-bold">Alpha features</h3>
         <div className="mt-3 space-y-3">
           {user.featureGrants.map((feature) => {
-            const eligible = accessStatus === "active" && featureTier === "ai";
+            const effectiveAccessStatus: AccessStatus =
+              accessMode === "public" && savedAccessStatus === "pending"
+                ? "active"
+                : savedAccessStatus;
+            const eligible = effectiveAccessStatus === "active" && savedFeatureTier === "ai";
             const savingFeature = featureSaving === feature.key;
             return (
               <div
@@ -262,28 +276,60 @@ function Change({ label, before, after }: { label: string; before: string; after
 }
 
 export function AdminUserManager({
+  accessMode,
   users,
   auditEvents,
 }: {
+  accessMode: AccessMode;
   users: ManagedUser[];
   auditEvents: AuditEvent[];
 }) {
   const pendingCount = users.filter((user) => user.accessStatus === "pending").length;
-  const activeCount = users.filter((user) => user.accessStatus === "active").length;
+  const activeCount = users.filter((user) => user.effectiveAccessStatus === "active").length;
+  const admittedByPublicMode = users.filter(
+    (user) => user.accessStatus === "pending" && user.effectiveAccessStatus === "active",
+  ).length;
+
+  const summaries =
+    accessMode === "public"
+      ? [
+          {
+            label: "Can enter now",
+            value: activeCount,
+            tone: "bg-mist",
+            hint:
+              admittedByPublicMode > 0
+                ? `${admittedByPublicMode} admitted by public mode`
+                : undefined,
+          },
+          {
+            label: "Still pending",
+            value: pendingCount,
+            tone: "bg-citrus/35",
+            hint: "Entering while public · gated again if switched to private",
+          },
+          { label: "Total", value: users.length, tone: "bg-peach/55", hint: undefined },
+        ]
+      : [
+          { label: "Pending", value: pendingCount, tone: "bg-citrus/35", hint: undefined },
+          { label: "Active", value: activeCount, tone: "bg-mist", hint: undefined },
+          { label: "Total", value: users.length, tone: "bg-peach/55", hint: undefined },
+        ];
 
   return (
     <div className="mt-9 space-y-10">
+      <AccessModeControl accessMode={accessMode} />
+
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Member access summary">
-        {[
-          { label: "Pending", value: pendingCount, tone: "bg-citrus/35" },
-          { label: "Active", value: activeCount, tone: "bg-mist" },
-          { label: "Total", value: users.length, tone: "bg-peach/55" },
-        ].map((summary) => (
+        {summaries.map((summary) => (
           <div key={summary.label} className={`rounded-2xl border border-line p-4 ${summary.tone}`}>
             <strong className="block text-3xl tracking-[-0.05em]">{summary.value}</strong>
             <span className="font-mono text-[10px] font-bold uppercase tracking-wide text-ink/55">
               {summary.label}
             </span>
+            {summary.hint && (
+              <span className="mt-1 block text-[11px] leading-4 text-ink/55">{summary.hint}</span>
+            )}
           </div>
         ))}
       </section>
@@ -292,12 +338,14 @@ export function AdminUserManager({
         <div className="border-b border-line px-5 py-5 sm:px-7">
           <h2 className="text-2xl font-bold tracking-[-0.04em]">People</h2>
           <p className="mt-1 text-sm text-ink/60">
-            Approve access and choose which features each person can use.
+            {accessMode === "public"
+              ? "New accounts can already enter. Their stored status still applies if you switch back to private."
+              : "Approve access and choose which features each person can use."}
           </p>
         </div>
         <div className="divide-y divide-line">
           {users.map((user) => (
-            <ManagedUserRow key={user.id} user={user} />
+            <ManagedUserRow key={user.id} user={user} accessMode={accessMode} />
           ))}
         </div>
       </section>

@@ -6,11 +6,16 @@ import {
   listManagedUsers,
   requireAdminUser,
 } from "@/features/access/server";
+import { getAccessMode } from "@/features/access/settings";
 import { listFeatureGrantsForUsers } from "@/features/feature-grants/server";
 
 export default async function AdminUsersPage() {
   await requireAdminUser();
-  const [users, auditEvents] = await Promise.all([listManagedUsers(), listAccessAuditEvents()]);
+  const [users, auditEvents, accessMode] = await Promise.all([
+    listManagedUsers(),
+    listAccessAuditEvents(),
+    getAccessMode(),
+  ]);
   const featureGrants = await listFeatureGrantsForUsers(users.map((user) => user.id));
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
@@ -43,6 +48,7 @@ export default async function AdminUsersPage() {
       />
       <AdminSectionNavigation active="users" />
       <AdminUserManager
+        accessMode={accessMode}
         users={sortedUsers.map(({ createdAt, ...user }) => ({
           ...user,
           joinedLabel: dateFormatter.format(createdAt),

@@ -20,6 +20,12 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 };
 
+export const appSettings = pgTable("app_settings", {
+  id: text("id").primaryKey().default("singleton"),
+  accessMode: varchar("access_mode", { length: 16 }).notNull().default("private"),
+  ...timestamps,
+});
+
 export const users = pgTable("users", {
   id: text("id")
     .primaryKey()
