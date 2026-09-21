@@ -42,5 +42,6 @@ export interface WardrobeRepository {
     forceOverwrite: boolean,
   ): Promise<void>;
   failAnalysis(itemId: string, message: string): Promise<void>;
+  claimFirstGarmentMilestone(ownerId: string): Promise<boolean>;
   deleteOwned(ownerId: string, itemId: string): Promise<void>;
 }

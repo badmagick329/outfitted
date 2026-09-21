@@ -9,11 +9,13 @@ import {
 import type { UpdateWardrobeItemInput } from "../domain/contracts";
 import type {
   AnalysisJobQueue,
+  BackgroundScheduler,
+  NotificationQueue,
   WardrobeAi,
   WardrobeAiUsageRecorder,
   WardrobeStorage,
 } from "../domain/ports";
-import type { WardrobeRepository } from "../domain/repository";
+import type { WardrobeItem, WardrobeRepository } from "../domain/repository";
 import type { ImageVariant } from "@/lib/storage";
 import { maxPhotosPerGarment } from "../domain/photo-files";
 import { categoryGroupForCategory } from "../domain/category-groups";
@@ -23,6 +25,8 @@ type Dependencies = {
   repository: WardrobeRepository;
   storage: WardrobeStorage;
   jobs: AnalysisJobQueue;
+  notifications: NotificationQueue;
+  schedule: BackgroundScheduler;
   ai: WardrobeAi;
   usageRecorder?: WardrobeAiUsageRecorder;
 };
@@ -76,6 +80,7 @@ export class WardrobeService {
       contentHash: string;
     }>;
     let itemId: string | null = null;
+    let created!: WardrobeItem;
     try {
       const uploads = await Promise.all(
         files.map(async (file) => {
@@ -106,9 +111,9 @@ export class WardrobeService {
         saved,
         queueAnalysis ? "pending" : "not_requested",
       );
+      created = item;
       itemId = item.id;
       if (queueAnalysis) await this.dependencies.jobs.enqueueAnalysis(item.id);
-      return item;
     } catch (error) {
       if (itemId) await this.dependencies.repository.deleteOwned(ownerId, itemId);
       await Promise.allSettled(saved.map((image) => this.dependencies.storage.delete(image.key)));
@@ -116,6 +121,20 @@ export class WardrobeService {
       throw infrastructureFailure(
         "We couldn’t finish saving this garment. No wardrobe record was created; please try again.",
       );
+    }
+    // The milestone is claimed only after the garment is fully committed and its AI job is
+    // queued. It is deferred past the response so notification work can never delay or fail
+    // a successful upload.
+    this.dependencies.schedule(() => this.claimFirstGarmentMilestone(ownerId));
+    return created;
+  }
+
+  private async claimFirstGarmentMilestone(ownerId: string) {
+    try {
+      if (await this.dependencies.repository.claimFirstGarmentMilestone(ownerId))
+        await this.dependencies.notifications.enqueue("first_garment_added", ownerId);
+    } catch (error) {
+      console.error("Couldn’t record the first-garment notification", error);
     }
   }
 

@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { itemPhotos, wardrobeItems } from "@/lib/db/schema";
+import { itemPhotos, users, wardrobeItems } from "@/lib/db/schema";
 import { inferCategoryGroup } from "../domain/category-groups";
 import type { UpdateWardrobeItemInput } from "../domain/contracts";
 import type { AnalysisStatus, WardrobeCard, WardrobeRepository } from "../domain/repository";
@@ -402,5 +402,14 @@ export class DrizzleWardrobeRepository implements WardrobeRepository {
     await db
       .delete(wardrobeItems)
       .where(and(eq(wardrobeItems.id, itemId), eq(wardrobeItems.userId, ownerId)));
+  }
+
+  async claimFirstGarmentMilestone(ownerId: string) {
+    const rows = await db
+      .update(users)
+      .set({ firstGarmentAddedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(users.id, ownerId), isNull(users.firstGarmentAddedAt)))
+      .returning({ id: users.id });
+    return rows.length === 1;
   }
 }

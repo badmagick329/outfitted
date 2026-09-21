@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
+  firstGarmentAddedAt: timestamp("first_garment_added_at", { withTimezone: true }),
   accessStatus: varchar("access_status", { length: 16 }).notNull().default("pending"),
   featureTier: varchar("feature_tier", { length: 16 }).notNull().default("inventory"),
   ...timestamps,
