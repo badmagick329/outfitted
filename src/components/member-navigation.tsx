@@ -11,6 +11,7 @@ import {
   Palette,
   ShieldCheck,
   Shirt,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand";
@@ -36,6 +37,14 @@ const destinations: Destination[] = [
       pathname.startsWith("/items") ||
       pathname.startsWith("/upload"),
     activeClassName: "bg-peach text-berry-dark",
+  },
+  {
+    href: "/ai-access",
+    label: "AI features",
+    icon: Sparkles,
+    available: ({ canUseAi }) => !canUseAi,
+    matches: (pathname) => pathname.startsWith("/ai-access"),
+    activeClassName: "bg-mist text-teal-dark",
   },
   {
     href: "/outfits",

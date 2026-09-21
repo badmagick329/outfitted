@@ -2,7 +2,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { accessAuditEvents, users } from "@/lib/db/schema";
+import { accessAuditEvents, aiAccessRequests, users } from "@/lib/db/schema";
 import { forbidden, notFound, unauthorized } from "@/shared/application-error";
 import type { AccessStatus, FeatureTier, UpdateUserAccessInput } from "./contracts";
 import { asAccessStatus, asFeatureTier, normalizeEmail, resolveAccountAccess } from "./policy";
@@ -130,19 +130,34 @@ export async function updateManagedUser(
     if (!user) throw notFound("User not found");
     const previousAccessStatus = asAccessStatus(user.accessStatus);
     const previousFeatureTier = asFeatureTier(user.featureTier);
-    if (previousAccessStatus === input.accessStatus && previousFeatureTier === input.featureTier)
-      return;
-    await transaction
-      .update(users)
-      .set({ ...input, updatedAt: new Date() })
-      .where(and(eq(users.id, userId)));
-    await transaction.insert(accessAuditEvents).values({
-      userId,
-      actorUserId,
-      previousAccessStatus,
-      nextAccessStatus: input.accessStatus,
-      previousFeatureTier,
-      nextFeatureTier: input.featureTier,
-    });
+    const unchanged =
+      previousAccessStatus === input.accessStatus && previousFeatureTier === input.featureTier;
+    if (!unchanged) {
+      await transaction
+        .update(users)
+        .set({ ...input, updatedAt: new Date() })
+        .where(and(eq(users.id, userId)));
+      await transaction.insert(accessAuditEvents).values({
+        userId,
+        actorUserId,
+        previousAccessStatus,
+        nextAccessStatus: input.accessStatus,
+        previousFeatureTier,
+        nextFeatureTier: input.featureTier,
+      });
+    }
+    // A manual AI grant supersedes any outstanding request; leaving it pending would
+    // misrepresent the member as still waiting for access they already hold.
+    if (input.featureTier === "ai") {
+      await transaction
+        .update(aiAccessRequests)
+        .set({
+          status: "approved",
+          resolvedByUserId: actorUserId,
+          resolvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(aiAccessRequests.userId, userId), eq(aiAccessRequests.status, "pending")));
+    }
   });
 }

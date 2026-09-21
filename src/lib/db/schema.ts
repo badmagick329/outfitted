@@ -54,6 +54,29 @@ export const accessAuditEvents = pgTable("access_audit_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const aiAccessRequests = pgTable(
+  "ai_access_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    resolvedByUserId: text("resolved_by_user_id").references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("ai_access_requests_one_pending_user_idx")
+      .on(table.userId)
+      .where(sql`${table.status} = 'pending'`),
+    index("ai_access_requests_user_created_at_idx").on(table.userId, table.createdAt),
+    index("ai_access_requests_status_idx").on(table.status),
+  ],
+);
+
 export const userFeatureGrants = pgTable(
   "user_feature_grants",
   {

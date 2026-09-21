@@ -19,6 +19,7 @@ type ManagedUser = {
   effectiveAccessStatus: AccessStatus;
   featureTier: FeatureTier;
   isAdmin: boolean;
+  hasPendingAiRequest: boolean;
   featureGrants: Array<{
     key: string;
     label: string;
@@ -39,6 +40,13 @@ type AuditEvent = {
   actorEmail: string;
   targetName: string | null;
   targetEmail: string;
+};
+
+type AiAccessRequestItem = {
+  id: string;
+  name: string | null;
+  email: string;
+  requestedLabel: string;
 };
 
 const statusStyles: Record<AccessStatus, string> = {
@@ -145,6 +153,11 @@ function ManagedUserRow({ user, accessMode }: { user: ManagedUser; accessMode: A
           {accessMode === "public" && accessStatus === "pending" && (
             <span className="mt-2 inline-flex rounded-full border border-teal/25 bg-mist px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-teal-dark">
               Can enter now · public mode
+            </span>
+          )}
+          {user.hasPendingAiRequest && (
+            <span className="mt-2 inline-flex rounded-full border border-citrus/80 bg-citrus/35 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-ink">
+              AI access requested
             </span>
           )}
         </div>
@@ -259,6 +272,83 @@ function ManagedUserRow({ user, accessMode }: { user: ManagedUser; accessMode: A
   );
 }
 
+function PendingAiRequestRow({ request }: { request: AiAccessRequestItem }) {
+  const router = useRouter();
+  const [resolving, setResolving] = useState<"approved" | "declined" | null>(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function decide(decision: "approved" | "declined") {
+    if (resolving) return;
+    setResolving(decision);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/admin/ai-access-requests/${request.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        setError(payload?.error?.message ?? "Couldn’t update this request.");
+        return;
+      }
+      setNotice(decision === "approved" ? "AI access granted." : "Request declined.");
+      router.refresh();
+    } catch {
+      setError("Couldn’t update this request. Check your connection and try again.");
+    } finally {
+      setResolving(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <strong className="break-words">{request.name ?? "Unnamed member"}</strong>
+          <span className="inline-flex rounded-full border border-citrus/80 bg-citrus/35 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-ink">
+            Pending
+          </span>
+        </div>
+        <span className="block break-all text-sm text-ink/60">{request.email}</span>
+        <span className="mt-1 block font-mono text-[10px] uppercase tracking-wide text-ink/45">
+          Requested {request.requestedLabel}
+        </span>
+        {(error || notice) && (
+          <p
+            role={error ? "alert" : "status"}
+            className={`mt-2 rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700" : "border border-teal/15 bg-mist text-teal-dark"}`}
+          >
+            {error || notice}
+          </p>
+        )}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={resolving !== null}
+          onClick={() => decide("approved")}
+        >
+          {resolving === "approved" ? "Approving…" : "Approve AI"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={resolving !== null}
+          onClick={() => decide("declined")}
+        >
+          {resolving === "declined" ? "Declining…" : "Decline"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Change({ label, before, after }: { label: string; before: string; after: string }) {
   if (before === after) return null;
   const displayValue = (value: string) => {
@@ -278,10 +368,12 @@ function Change({ label, before, after }: { label: string; before: string; after
 export function AdminUserManager({
   accessMode,
   users,
+  aiRequests,
   auditEvents,
 }: {
   accessMode: AccessMode;
   users: ManagedUser[];
+  aiRequests: AiAccessRequestItem[];
   auditEvents: AuditEvent[];
 }) {
   const pendingCount = users.filter((user) => user.accessStatus === "pending").length;
@@ -320,6 +412,27 @@ export function AdminUserManager({
     <div className="mt-9 space-y-10">
       <AccessModeControl accessMode={accessMode} />
 
+      <section
+        className="overflow-hidden rounded-3xl border border-line bg-citrus/10 shadow-[5px_5px_0_var(--color-citrus)]"
+        aria-label="AI access requests"
+      >
+        <div className="border-b border-line px-5 py-5 sm:px-7">
+          <h2 className="text-2xl font-bold tracking-[-0.04em]">AI access requests</h2>
+          <p className="mt-1 text-sm text-ink/60">
+            {aiRequests.length
+              ? "Approve to switch the member to AI features, or decline to keep them on inventory."
+              : "No members are waiting for AI access."}
+          </p>
+        </div>
+        {aiRequests.length > 0 && (
+          <div className="divide-y divide-line">
+            {aiRequests.map((request) => (
+              <PendingAiRequestRow key={request.id} request={request} />
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Member access summary">
         {summaries.map((summary) => (
           <div key={summary.label} className={`rounded-2xl border border-line p-4 ${summary.tone}`}>
@@ -345,7 +458,11 @@ export function AdminUserManager({
         </div>
         <div className="divide-y divide-line">
           {users.map((user) => (
-            <ManagedUserRow key={user.id} user={user} accessMode={accessMode} />
+            <ManagedUserRow
+              key={`${user.id}:${user.accessStatus}:${user.featureTier}`}
+              user={user}
+              accessMode={accessMode}
+            />
           ))}
         </div>
       </section>
