@@ -99,6 +99,13 @@
       "when": 1789977503902,
       "tag": "0013_mighty_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789992509967,
+      "tag": "0014_flawless_tarantula",
+      "breakpoints": true
     }
   ]
 }

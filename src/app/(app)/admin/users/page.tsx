@@ -7,14 +7,16 @@ import {
   requireAdminUser,
 } from "@/features/access/server";
 import { getAccessMode } from "@/features/access/settings";
+import { aiAccessService } from "@/features/ai-access/server";
 import { listFeatureGrantsForUsers } from "@/features/feature-grants/server";
 
 export default async function AdminUsersPage() {
   await requireAdminUser();
-  const [users, auditEvents, accessMode] = await Promise.all([
+  const [users, auditEvents, accessMode, pendingAiRequests] = await Promise.all([
     listManagedUsers(),
     listAccessAuditEvents(),
     getAccessMode(),
+    aiAccessService.listPending(),
   ]);
   const featureGrants = await listFeatureGrantsForUsers(users.map((user) => user.id));
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -33,11 +35,16 @@ export default async function AdminUsersPage() {
     timeZone: "UTC",
   });
   const statusOrder = { pending: 0, active: 1, disabled: 2 } as const;
-  const sortedUsers = [...users].sort(
-    (left, right) =>
+  const requestedUserIds = new Set(pendingAiRequests.map((request) => request.userId));
+  const sortedUsers = [...users].sort((left, right) => {
+    const leftRequested = requestedUserIds.has(left.id) ? 0 : 1;
+    const rightRequested = requestedUserIds.has(right.id) ? 0 : 1;
+    return (
+      leftRequested - rightRequested ||
       statusOrder[left.accessStatus] - statusOrder[right.accessStatus] ||
-      left.createdAt.getTime() - right.createdAt.getTime(),
-  );
+      left.createdAt.getTime() - right.createdAt.getTime()
+    );
+  });
 
   return (
     <>
@@ -52,7 +59,14 @@ export default async function AdminUsersPage() {
         users={sortedUsers.map(({ createdAt, ...user }) => ({
           ...user,
           joinedLabel: dateFormatter.format(createdAt),
+          hasPendingAiRequest: requestedUserIds.has(user.id),
           featureGrants: featureGrants[user.id] ?? [],
+        }))}
+        aiRequests={pendingAiRequests.map((request) => ({
+          id: request.id,
+          name: request.userName,
+          email: request.userEmail,
+          requestedLabel: dateTimeFormatter.format(request.createdAt),
         }))}
         auditEvents={auditEvents.map(({ createdAt, ...event }) => ({
           ...event,
