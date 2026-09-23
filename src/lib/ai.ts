@@ -19,7 +19,7 @@ import {
   buildWardrobeReviewPrompt,
 } from "./ai-prompts";
 
-export const AI_MODEL = "gpt-5.6-luna";
+export const AI_MODEL = "gpt-6-luna";
 export const analysisSchema = z.object({
   name: z.string().max(160),
   description: z.string(),
