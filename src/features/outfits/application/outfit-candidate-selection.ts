@@ -209,12 +209,3 @@ export function selectCandidateWithDiagnostics(
       : bestCandidates[Math.floor((options.random ?? Math.random)() * bestCandidates.length)]!;
   return { candidate: selected.candidate, novelty: selected.novelty, variableRoles: roles };
 }
-
-export function selectLeastRepetitiveCandidate(
-  candidates: ValidOutfitCandidate[],
-  history: string[][],
-  selectedItemId?: string,
-  random = Math.random,
-) {
-  return selectCandidateWithDiagnostics(candidates, history, { selectedItemId, random }).candidate;
-}

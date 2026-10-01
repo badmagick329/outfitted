@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   candidateNovelty,
   recentSuggestionUsageByItemId,
-  selectLeastRepetitiveCandidate,
   qualityGateCandidates,
   selectCandidateWithDiagnostics,
   validOutfitCandidates,
@@ -74,7 +73,7 @@ describe("outfit candidate validation", () => {
 
 describe("candidate novelty selection", () => {
   it("prefers a candidate that avoids the immediately previous suggestion", () => {
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [candidate("repeated", ["top-1", "bottom-1"]), candidate("fresh", ["top-2", "bottom-2"])],
       [["top-1", "bottom-1"]],
     );
@@ -83,7 +82,7 @@ describe("candidate novelty selection", () => {
   });
 
   it("continues to penalise a garment used two suggestions ago", () => {
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [candidate("dominant", ["top-1"]), candidate("fresh", ["top-2"])],
       [["other-item"], ["top-1"]],
     );
@@ -92,7 +91,7 @@ describe("candidate novelty selection", () => {
   });
 
   it("uses the highest individual recent-use count before the overall average", () => {
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [candidate("overused", ["top-1", "fresh"]), candidate("less-used", ["top-2", "fresh"])],
       [[], [], [], ["top-1"], ["top-1"], ["top-1"], ["top-2"]],
     );
@@ -118,24 +117,23 @@ describe("candidate novelty selection", () => {
   });
 
   it("excludes a mandatory selected garment from diversity scoring", () => {
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [
         candidate("recent-other", ["required", "item-1"]),
         candidate("fresh-other", ["required", "item-2"]),
       ],
       [["required", "item-1"]],
-      "required",
+      { selectedItemId: "required" },
     );
 
     expect(selected.signature).toBe("item-2:required");
   });
 
   it("still selects a valid candidate when every candidate shares the required garment", () => {
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [candidate("first", ["required"]), candidate("second", ["required"])],
       [["required"]],
-      "required",
-      () => 0,
+      { selectedItemId: "required", random: () => 0 },
     );
 
     expect(selected.referencedItemIds).toEqual(["required"]);
@@ -143,11 +141,10 @@ describe("candidate novelty selection", () => {
 
   it("uses randomness only among equally best candidates", () => {
     const random = vi.fn(() => 0.99);
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [candidate("first", ["item-1"]), candidate("second", ["item-2"])],
       [],
-      undefined,
-      random,
+      { random },
     );
 
     expect(random).toHaveBeenCalledOnce();
@@ -156,11 +153,10 @@ describe("candidate novelty selection", () => {
 
   it("never includes worse candidates in the random tie-break pool", () => {
     const random = vi.fn(() => 0.99);
-    const selected = selectLeastRepetitiveCandidate(
+    const { candidate: selected } = selectCandidateWithDiagnostics(
       [candidate("fresh", ["item-1"]), candidate("repeated", ["item-2"])],
       [["item-2"]],
-      undefined,
-      random,
+      { random },
     );
 
     expect(random).not.toHaveBeenCalled();
