@@ -23,4 +23,26 @@ describe("estimateCostMicrousd", () => {
       }),
     ).toBe(11);
   });
+
+  it("keeps standard rates for prompts at exactly 272K input tokens", () => {
+    expect(
+      estimateCostMicrousd({
+        inputTokens: 272_000,
+        cachedInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        outputTokens: 1_000,
+      }),
+    ).toBe(27_700);
+  });
+
+  it("applies long-context rates to the whole request above 272K input tokens", () => {
+    expect(
+      estimateCostMicrousd({
+        inputTokens: 300_000,
+        cachedInputTokens: 100_000,
+        cacheWriteInputTokens: 50_000,
+        outputTokens: 2_000,
+      }),
+    ).toBe(46_000);
+  });
 });
