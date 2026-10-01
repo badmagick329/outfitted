@@ -12,6 +12,9 @@ Private, multi-user wardrobe management with local image storage and AI-assisted
 
 The application and worker run directly through Bun for fast local reloads. Docker is deliberately limited to PostgreSQL during development.
 
+To open the dev server from another device on your LAN, run `bun run dev:network` and add that
+device-facing host to `ALLOWED_DEV_ORIGINS` in `.env` (comma-separated).
+
 ## Commands
 
 - `docker compose up -d` / `docker compose down`: manage local PostgreSQL
