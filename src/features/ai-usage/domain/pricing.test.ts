@@ -10,7 +10,7 @@ describe("estimateCostMicrousd", () => {
         cacheWriteInputTokens: 1_000,
         outputTokens: 1_000,
       }),
-    ).toBe(2_890);
+    ).toBe(1_345);
   });
 
   it("never creates negative uncached usage from inconsistent provider totals", () => {
@@ -21,6 +21,6 @@ describe("estimateCostMicrousd", () => {
         cacheWriteInputTokens: 80,
         outputTokens: 0,
       }),
-    ).toBe(22);
+    ).toBe(11);
   });
 });
