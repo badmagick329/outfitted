@@ -1,23 +1,22 @@
 # Outfitted interface style
 
-Build a lively private wardrobe catalogue: confident, useful, tactile, and personal. It should feel closer to a well-kept fashion scrapbook than an enterprise dashboard, generic AI tool, or retail storefront.
+Outfitted is a lively private wardrobe catalogue: confident, useful, tactile, personal. Aim for a well-kept fashion scrapbook, not an enterprise dashboard, generic AI tool or retail storefront.
 
 ## Visual language
 
-- Use a warm cream canvas and deep ink text. Berry is the primary action colour, teal provides structure, and citrus is the high-energy highlight.
-- Use Space Grotesk for expressive UI hierarchy and IBM Plex Mono for compact labels, inventory counts, and processing metadata.
-- Do not use redundant eyebrow labels. A label should add context the heading does not already communicate; never restate the page title in different words.
-- Garment images are the visual lead. Give cards clear framing, generous crops, and varied but disciplined colour moments.
-- Make interactions tactile: crisp borders, slightly rounded corners, confident hover movement, and obvious focus states. Avoid glass effects, gradients, giant pills, and default SaaS-dashboard panels.
-- Keep the product practical. Colour should distinguish actions and state, not obstruct scanning a wardrobe.
+- Warm cream canvas, deep ink text. Berry is the primary action colour, teal gives structure, citrus is the high-energy highlight. Colour marks actions and state; garments stay easy to scan.
+- Space Grotesk carries expressive hierarchy; IBM Plex Mono carries compact labels, inventory counts and processing metadata.
+- Garment images lead. Give cards clear framing, generous crops, and varied but disciplined colour moments.
+- Interactions feel tactile: crisp borders, slightly rounded corners, confident hover movement, obvious focus states. Surfaces are flat and solid (no glass, gradients, giant pills or stock SaaS panels).
+- Every label adds context its heading lacks; a heading stands alone when there is nothing to add.
 
 ## Layout and components
 
-- Use Tailwind utilities and reusable shadcn-style primitives; global CSS is reserved for tokens, base rules, and shared animation only.
-- Prefer a catalogue grid on desktop and dense two-column cards on mobile. Item titles may wrap; never hide useful garment names behind arbitrary ellipsis.
-- Use compact mono badges for analysis state. Use dialogs for destructive confirmation rather than browser-native confirmation.
-- Give empty, loading, pending, and failed states their own considered visual treatment.
+- Build with Tailwind utilities and the shadcn-style primitives in `src/components/ui`. Global CSS holds only tokens, base rules and shared animation.
+- Catalogue grid on desktop, dense two-column cards on mobile. Garment names wrap in full.
+- Analysis state uses compact mono badges. Destructive actions confirm in a dialog.
+- Empty, loading, pending and failed states each get their own considered design.
 
 ## QA
 
-Before calling UI work complete, check that it is recognisably Outfitted, works comfortably one-handed on mobile, has readable contrast, preserves private-data boundaries, and does not introduce styling logic into application services.
+UI work is done when it is recognisably Outfitted, comfortable one-handed on mobile, readable in contrast, keeps each member's data private, and keeps styling logic in components rather than application services.
