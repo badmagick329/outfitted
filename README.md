@@ -22,7 +22,7 @@ device-facing host to `ALLOWED_DEV_ORIGINS` in `.env` (comma-separated).
 - `bun run db:migrate`: apply committed migrations
 - `bun run worker`: run the asynchronous AI processor
 - `bun run maintenance:normalize-wardrobe`: preview safe metadata cleanup; add `--apply` to write it
-- `bun run lint` / `bun run build`: validate the app
+- `bun run lint` / `bun run test` / `bun run build`: validate the app
 
 Existing records are not rewritten during deployment. Run the maintenance command explicitly when
 you want safe whitespace, empty-value, case-only duplicate, and already-controlled-value cleanup.

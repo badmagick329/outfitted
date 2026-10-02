@@ -8,6 +8,7 @@ Outfitted is a lively private wardrobe catalogue: confident, useful, tactile, pe
 - Space Grotesk carries expressive hierarchy; IBM Plex Mono carries compact labels, inventory counts and processing metadata.
 - Garment images lead. Give cards clear framing, generous crops, and varied but disciplined colour moments.
 - Interactions feel tactile: crisp borders, slightly rounded corners, confident hover movement, obvious focus states. Surfaces are flat and solid (no glass, gradients, giant pills or stock SaaS panels).
+- Motion shows the product working: brief, springy, built from the same cards and tokens. Anything that loops pauses off-screen and on request, and reduced motion gets its finished frame as a still.
 - Every label adds context its heading lacks; a heading stands alone when there is nothing to add.
 
 ## Layout and components
