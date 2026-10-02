@@ -5,9 +5,9 @@ import {
   Camera,
   Check,
   Eye,
-  Layers3,
-  ListPlus,
+  ListChecks,
   LockKeyhole,
+  Palette,
   Shirt,
 } from "lucide-react";
 import berryJacket from "../../public/landing/berry-chore-jacket.webp";
@@ -16,6 +16,7 @@ import offWhiteTee from "../../public/landing/off-white-tee.webp";
 import stoneTrousers from "../../public/landing/stone-trousers.webp";
 import tealShirt from "../../public/landing/teal-camp-shirt.webp";
 import { BrandWordmark } from "@/components/brand";
+import { PhotoToOutfitLoop } from "@/components/photo-to-outfit-loop";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Marquee } from "@/components/ui/marquee";
 import type { AccessMode } from "@/features/access/contracts";
@@ -64,7 +65,25 @@ const citrusRibbedKnit: Garment = {
   imageClassName: "bg-mist",
 };
 
-const outfitGarments = [offWhiteCrewTee, berryChoreJacket, stonePleatedTrousers];
+// Mirrors the member review report: entries cite the garments they are about.
+const reviewEntries = [
+  {
+    kind: "Strength",
+    title: "Colour that still layers",
+    detail:
+      "The berry jacket and citrus knit bring the energy, and both sit easily over the off-white tee.",
+    garments: [berryChoreJacket, citrusRibbedKnit, offWhiteCrewTee],
+    tone: "bg-mist",
+  },
+  {
+    kind: "Gap",
+    title: "One pair of trousers does every job",
+    detail:
+      "The stone trousers anchor almost every outfit. A darker pair would give the jacket and camp shirt an evening option.",
+    garments: [stonePleatedTrousers, tealCampShirt],
+    tone: "bg-peach/55",
+  },
+];
 const garments = [
   offWhiteCrewTee,
   tealCampShirt,
@@ -72,78 +91,6 @@ const garments = [
   stonePleatedTrousers,
   citrusRibbedKnit,
 ];
-
-function HeroCollage() {
-  return (
-    <div className="relative mx-auto min-h-[500px] w-full max-w-[570px] sm:min-h-[610px] lg:min-h-[650px]">
-      <div className="absolute inset-x-[8%] top-[8%] h-[76%] rotate-2 rounded-[2rem] bg-citrus" />
-      <div className="absolute inset-x-[4%] top-[4%] h-[78%] -rotate-2 rounded-[2rem] border-2 border-ink bg-mist" />
-
-      <BlurFade delay={0.12} direction="left" className="absolute left-[2%] top-[10%] w-[58%]">
-        <article className="rotate-[-4deg] overflow-hidden rounded-[1.6rem] border-2 border-ink bg-canvas shadow-[8px_8px_0_var(--color-berry)]">
-          <Image
-            src={berryJacket}
-            alt="Berry-red chore jacket laid on cream linen"
-            className="aspect-[4/5] w-full object-cover"
-            priority
-            sizes="(max-width: 640px) 58vw, 330px"
-          />
-          <div className="border-t-2 border-ink bg-canvas p-4">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-teal">
-              Outerwear
-            </p>
-            <p className="mt-1 text-lg font-bold tracking-[-0.03em]">Berry chore jacket</p>
-          </div>
-        </article>
-      </BlurFade>
-
-      <BlurFade delay={0.22} direction="right" className="absolute right-[2%] top-[4%] w-[40%]">
-        <figure className="rotate-[5deg] overflow-hidden rounded-[1.35rem] border-2 border-ink bg-peach shadow-[6px_6px_0_var(--color-teal)]">
-          <Image
-            src={tealShirt}
-            alt="Teal patterned camp shirt laid on peach paper"
-            className="aspect-[4/5] w-full object-cover"
-            priority
-            sizes="(max-width: 640px) 40vw, 230px"
-          />
-        </figure>
-      </BlurFade>
-
-      <BlurFade delay={0.3} direction="up" className="absolute bottom-[4%] right-[4%] w-[44%]">
-        <div className="rotate-[-3deg] rounded-[1.35rem] border-2 border-ink bg-canvas p-4 shadow-[6px_6px_0_var(--color-peach)] sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-berry">
-              Outfit idea
-            </span>
-            <span className="grid size-7 place-items-center rounded-full bg-citrus text-ink">
-              <ListPlus size={14} />
-            </span>
-          </div>
-          <p className="mt-3 text-sm font-bold leading-snug sm:text-base">
-            A relaxed Saturday in town
-          </p>
-          <div className="mt-4 flex -space-x-2">
-            {outfitGarments.map((garment) => (
-              <Image
-                key={garment.name}
-                src={garment.image}
-                alt=""
-                className="size-11 rounded-full border-2 border-canvas object-cover sm:size-13"
-                sizes="52px"
-              />
-            ))}
-          </div>
-        </div>
-      </BlurFade>
-
-      <BlurFade delay={0.38} direction="up" className="absolute bottom-[3%] left-[1%]">
-        <div className="rotate-2 rounded-full border-2 border-ink bg-teal px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-canvas shadow-[3px_3px_0_var(--color-citrus)]">
-          Browse all 24 pieces
-        </div>
-      </BlurFade>
-    </div>
-  );
-}
 
 function GarmentStrip() {
   return (
@@ -224,7 +171,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
             </div>
           </BlurFade>
         </div>
-        <HeroCollage />
+        <PhotoToOutfitLoop />
       </section>
 
       <section className="border-y-2 border-ink bg-mist py-5" aria-label="Example garments">
@@ -297,53 +244,79 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
           <BlurFade inView direction="left">
             <div>
               <span className="inline-flex rounded-2xl bg-citrus p-3 text-ink">
-                <Layers3 size={24} />
+                <ListChecks size={24} />
               </span>
               <h2 className="mt-7 text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl">
                 A little help, when you want it.
               </h2>
               <p className="mt-6 max-w-xl text-lg leading-8 text-canvas/72">
-                Optional AI can fill in garment details after an upload and suggest an outfit using
-                the clothes already in your wardrobe. Every detail stays editable.
+                Optional AI fills in garment details and suggests outfits. For the bigger picture,
+                ask for a wardrobe review against your own style notes: what is working, what is
+                missing, and the pieces behind each point. Every detail stays yours to edit.
               </p>
             </div>
           </BlurFade>
 
           <BlurFade inView direction="right" delay={0.1}>
-            <article className="rounded-[2rem] border-2 border-ink bg-canvas p-5 text-ink shadow-[10px_10px_0_var(--color-citrus)] sm:p-8">
-              <div className="flex items-center justify-between gap-4 border-b-2 border-teal/25 pb-5">
-                <div>
+            <div>
+              <aside className="relative z-10 -mb-7 ml-auto mr-3 w-fit max-w-[16rem] rotate-3 rounded-2xl border-2 border-ink bg-peach p-4 text-ink shadow-[5px_5px_0_var(--color-ink)] sm:-mr-4">
+                <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-berry">
+                  <Palette size={13} aria-hidden="true" /> Your style notes
+                </p>
+                <ul className="mt-2 grid gap-1 text-sm font-semibold leading-snug">
+                  <li>Relaxed, a little playful</li>
+                  <li>Warm colours, soft structure</li>
+                  <li>No big logos</li>
+                </ul>
+              </aside>
+              <article className="rounded-[2rem] border-2 border-ink bg-canvas p-5 pt-9 text-ink shadow-[10px_10px_0_var(--color-citrus)] sm:p-8 sm:pt-10">
+                <div className="border-b-2 border-teal/25 pb-5">
                   <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-berry">
-                    Outfit Desk
+                    Wardrobe review
                   </p>
                   <h3 className="mt-1 text-xl font-bold tracking-[-0.03em]">
-                    A relaxed Saturday in town
+                    25 garments, read against your style
                   </h3>
+                  <p className="mt-3 leading-7 text-ink/68">
+                    A relaxed, colour-confident wardrobe built on easy layers. The brights work
+                    hardest when a neutral holds them down.
+                  </p>
                 </div>
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-mist text-teal">
-                  <ListPlus size={18} />
-                </span>
-              </div>
-              <p className="mt-6 leading-7 text-ink/68">
-                Pair the off-white tee with the berry jacket and stone trousers for one simple,
-                relaxed outfit.
-              </p>
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                {outfitGarments.map((garment) => (
-                  <figure key={garment.name}>
-                    <Image
-                      src={garment.image}
-                      alt=""
-                      className="aspect-[4/5] w-full rounded-xl border-2 border-line object-cover"
-                      sizes="(max-width: 640px) 42vw, (max-width: 1024px) 21vw, 125px"
-                    />
-                    <figcaption className="mt-2 text-xs font-bold leading-tight">
-                      {garment.name}
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            </article>
+                <div className="mt-5 grid gap-3">
+                  {reviewEntries.map((entry, index) => (
+                    <BlurFade key={entry.kind} inView delay={0.2 + index * 0.1}>
+                      <section
+                        className={`rounded-2xl border border-line p-4 sm:p-5 ${entry.tone}`}
+                      >
+                        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-teal">
+                          {entry.kind}
+                        </p>
+                        <h4 className="mt-1 text-lg font-bold tracking-[-0.025em]">
+                          {entry.title}
+                        </h4>
+                        <p className="mt-1.5 text-sm leading-6 text-ink/65">{entry.detail}</p>
+                        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Garments cited">
+                          {entry.garments.map((garment) => (
+                            <li
+                              key={garment.name}
+                              className="flex items-center gap-2 rounded-xl border border-line bg-canvas p-1.5 pr-3"
+                            >
+                              <Image
+                                src={garment.image}
+                                alt=""
+                                className={`size-9 shrink-0 rounded-lg object-cover ${garment.imageClassName}`}
+                                sizes="36px"
+                              />
+                              <span className="text-xs font-bold">{garment.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    </BlurFade>
+                  ))}
+                </div>
+              </article>
+            </div>
           </BlurFade>
         </div>
       </section>
