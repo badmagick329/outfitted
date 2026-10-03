@@ -1,9 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, type TargetAndTransition } from "motion/react";
-import { Pause, Play } from "lucide-react";
+import {
+  DemoPauseButton,
+  usePageVisible,
+  useReducedMotionPreference,
+} from "@/components/demo-playback";
 import { demoGarment, demoWardrobe, type DemoGarment } from "@/components/demo-wardrobe";
 
 /*
@@ -165,19 +169,6 @@ const monoLabel =
 const bodyText = "text-[length:max(11px,2.5cqw)] leading-snug";
 const titleText = "text-[length:max(13px,3.3cqw)] font-bold leading-tight tracking-[-0.03em]";
 
-const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
-
-function subscribeReducedMotion(onChange: () => void) {
-  const query = window.matchMedia(reducedMotionQuery);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-function subscribeVisibility(onChange: () => void) {
-  document.addEventListener("visibilitychange", onChange);
-  return () => document.removeEventListener("visibilitychange", onChange);
-}
-
 const instantly = (target: TargetAndTransition): TargetAndTransition => ({
   ...target,
   transition: { duration: 0 },
@@ -186,17 +177,8 @@ const instantly = (target: TargetAndTransition): TargetAndTransition => ({
 export function PhotoToOutfitLoop() {
   const stage = useRef<HTMLDivElement>(null);
   const inView = useInView(stage, { amount: 0.3 });
-  // Both stores report the server value during hydration, so markup matches before they apply.
-  const reducedMotion = useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia(reducedMotionQuery).matches,
-    () => false,
-  );
-  const pageVisible = useSyncExternalStore(
-    subscribeVisibility,
-    () => document.visibilityState === "visible",
-    () => true,
-  );
+  const reducedMotion = useReducedMotionPreference();
+  const pageVisible = usePageVisible();
   const [paused, setPaused] = useState(false);
   const [step, setStep] = useState({ index: 0, cycle: 0 });
   const [typed, setTyped] = useState({ cycle: -1, length: 0 });
@@ -516,14 +498,12 @@ export function PhotoToOutfitLoop() {
         </motion.div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setPaused((current) => !current)}
-        className="absolute bottom-0 right-[3%] z-40 inline-flex -rotate-2 items-center gap-1.5 rounded-full border-2 border-ink bg-teal px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-canvas shadow-[3px_3px_0_var(--color-citrus)] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry motion-reduce:hidden"
-      >
-        {paused ? <Play size={12} aria-hidden="true" /> : <Pause size={12} aria-hidden="true" />}
-        {paused ? "Play" : "Pause"}
-      </button>
+      <DemoPauseButton
+        paused={paused}
+        onToggle={() => setPaused((current) => !current)}
+        label="the photo-to-outfit demo"
+        className="absolute bottom-0 right-[3%]"
+      />
     </div>
   );
 }
