@@ -1,69 +1,32 @@
-import Image, { type StaticImageData } from "next/image";
+import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Camera,
-  Check,
-  Eye,
-  ListChecks,
-  LockKeyhole,
-  Palette,
-  Shirt,
-} from "lucide-react";
-import berryJacket from "../../public/landing/berry-chore-jacket.webp";
-import citrusKnit from "../../public/landing/citrus-knit.webp";
-import offWhiteTee from "../../public/landing/off-white-tee.webp";
-import stoneTrousers from "../../public/landing/stone-trousers.webp";
-import tealShirt from "../../public/landing/teal-camp-shirt.webp";
+import { ArrowRight, Check, ListChecks, LockKeyhole, Palette } from "lucide-react";
 import { BrandWordmark } from "@/components/brand";
+import { demoGarment, demoWardrobe } from "@/components/demo-wardrobe";
+import { OutfitOccasionDemo } from "@/components/outfit-occasion-demo";
 import { PhotoToOutfitLoop } from "@/components/photo-to-outfit-loop";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Marquee } from "@/components/ui/marquee";
+import { WardrobeFilterDemo } from "@/components/wardrobe-filter-demo";
 import type { AccessMode } from "@/features/access/contracts";
 
-type Garment = {
-  name: string;
-  category: string;
-  colour: string;
-  image: StaticImageData;
-  imageClassName: string;
-};
-
-const berryChoreJacket: Garment = {
-  name: "Berry chore jacket",
-  category: "Outerwear",
-  colour: "Berry red",
-  image: berryJacket,
-  imageClassName: "bg-[#eadfce]",
-};
-const tealCampShirt: Garment = {
-  name: "Teal camp shirt",
-  category: "Shirts",
-  colour: "Deep teal",
-  image: tealShirt,
-  imageClassName: "bg-peach",
-};
-const offWhiteCrewTee: Garment = {
-  name: "Off-white crew tee",
-  category: "T-shirts",
-  colour: "Warm white",
-  image: offWhiteTee,
-  imageClassName: "bg-mist",
-};
-const stonePleatedTrousers: Garment = {
-  name: "Stone pleated trousers",
-  category: "Trousers",
-  colour: "Stone",
-  image: stoneTrousers,
-  imageClassName: "bg-peach",
-};
-const citrusRibbedKnit: Garment = {
-  name: "Citrus knit",
-  category: "Knitwear",
-  colour: "Citrus yellow",
-  image: citrusKnit,
-  imageClassName: "bg-mist",
-};
+const steps = [
+  {
+    number: "01",
+    title: "Photograph it",
+    body: "From your phone or computer, one piece at a time or a whole batch.",
+  },
+  {
+    number: "02",
+    title: "Details fill in",
+    body: "Optional AI notes category, colour, material and season. Edit anything.",
+  },
+  {
+    number: "03",
+    title: "Browse and filter",
+    body: "Jump between sections and style tags; archive what is out of rotation.",
+  },
+];
 
 // Mirrors the member review report: entries cite the garments they are about.
 const reviewEntries = [
@@ -72,38 +35,39 @@ const reviewEntries = [
     title: "Colour that still layers",
     detail:
       "The berry jacket and citrus knit bring the energy, and both sit easily over the off-white tee.",
-    garments: [berryChoreJacket, citrusRibbedKnit, offWhiteCrewTee],
+    garments: [
+      demoGarment("berry-chore-jacket"),
+      demoGarment("citrus-knit"),
+      demoGarment("off-white-tee"),
+    ],
     tone: "bg-mist",
   },
   {
     kind: "Gap",
-    title: "One pair of trousers does every job",
+    title: "Nothing for wet feet",
     detail:
-      "The stone trousers anchor almost every outfit. A darker pair would give the jacket and camp shirt an evening option.",
-    garments: [stonePleatedTrousers, tealCampShirt],
+      "Suede boots and white trainers both dread the rain. A leather pair would finish the mac on wet commutes.",
+    garments: [
+      demoGarment("chelsea-boots"),
+      demoGarment("white-trainers"),
+      demoGarment("khaki-mac"),
+    ],
     tone: "bg-peach/55",
   },
-];
-const garments = [
-  offWhiteCrewTee,
-  tealCampShirt,
-  berryChoreJacket,
-  stonePleatedTrousers,
-  citrusRibbedKnit,
 ];
 
 function GarmentStrip() {
   return (
-    <Marquee pauseOnHover className="py-4 [--duration:32s] [--gap:1.25rem]">
-      {garments.map((garment) => (
+    <Marquee pauseOnHover className="py-4 [--duration:80s] [--gap:1.25rem]">
+      {demoWardrobe.map((garment) => (
         <article
-          key={garment.name}
+          key={garment.id}
           className="flex w-[290px] shrink-0 items-center gap-3 rounded-2xl border-2 border-ink bg-canvas p-3 shadow-[4px_4px_0_var(--color-peach)]"
         >
           <Image
             src={garment.image}
             alt=""
-            className={`size-20 rounded-xl object-cover ${garment.imageClassName}`}
+            className={`size-20 rounded-xl object-cover ${garment.tint}`}
             sizes="80px"
           />
           <div className="min-w-0">
@@ -189,53 +153,51 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
               Outfitted keeps the useful details close to the photograph, without turning your
-              wardrobe into an admin job.
+              wardrobe into an admin job. Have a go with this sample wardrobe.
             </p>
           </div>
         </BlurFade>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-3">
-          {[
-            {
-              icon: Camera,
-              number: "01",
-              title: "Start with a photo",
-              body: "Add a garment from your phone or computer. Outfitted keeps the image at the centre of the record.",
-              colour: "bg-peach",
-            },
-            {
-              icon: Shirt,
-              number: "02",
-              title: "Keep what matters",
-              body: "Name it, describe it and note the colour, material or fit. Leave anything blank when it is not useful.",
-              colour: "bg-mist",
-            },
-            {
-              icon: Eye,
-              number: "03",
-              title: "See the full wardrobe",
-              body: "Browse your active pieces as a visual collection and tuck things into the archive when they are out of rotation.",
-              colour: "bg-citrus",
-            },
-          ].map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <BlurFade key={item.number} inView delay={index * 0.08} className="h-full">
-                <article
-                  className={`flex h-full flex-col rounded-[1.75rem] border-2 border-ink p-6 shadow-[6px_6px_0_var(--color-ink)] sm:p-7 ${item.colour}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <span className="grid size-12 place-items-center rounded-2xl border-2 border-ink bg-canvas">
-                      <Icon size={22} />
-                    </span>
-                    <span className="font-mono text-xs font-bold text-ink/45">{item.number}</span>
-                  </div>
-                  <h3 className="mt-8 text-2xl font-bold tracking-[-0.045em]">{item.title}</h3>
-                  <p className="mt-3 leading-7 text-ink/68">{item.body}</p>
-                </article>
-              </BlurFade>
-            );
-          })}
+        <ol className="mt-10 grid gap-5 sm:grid-cols-3">
+          {steps.map((step, index) => (
+            <BlurFade key={step.number} inView delay={index * 0.08}>
+              <li className="border-t-2 border-ink pt-4">
+                <span className="font-mono text-xs font-bold text-berry">{step.number}</span>
+                <h3 className="mt-2 text-xl font-bold tracking-[-0.04em]">{step.title}</h3>
+                <p className="mt-1.5 leading-7 text-ink/65">{step.body}</p>
+              </li>
+            </BlurFade>
+          ))}
+        </ol>
+
+        <BlurFade inView delay={0.1} className="mt-12">
+          <WardrobeFilterDemo />
+        </BlurFade>
+      </section>
+
+      <section
+        aria-labelledby="outfit-desk-heading"
+        className="border-y-2 border-ink bg-mist px-5 py-24 sm:px-8 lg:py-32"
+      >
+        <div className="mx-auto w-full max-w-7xl lg:px-2">
+          <BlurFade inView>
+            <div className="max-w-3xl">
+              <h2
+                id="outfit-desk-heading"
+                className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
+              >
+                Dressed for whatever is next.
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
+                Tell the Outfit Desk where you are going. It picks from the clothes you already own
+                and says why. Try it on the sample wardrobe; these suggestions are pre-written
+                examples.
+              </p>
+            </div>
+          </BlurFade>
+          <BlurFade inView delay={0.1} className="mt-10">
+            <OutfitOccasionDemo />
+          </BlurFade>
         </div>
       </section>
 
@@ -275,7 +237,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
                     Wardrobe review
                   </p>
                   <h3 className="mt-1 text-xl font-bold tracking-[-0.03em]">
-                    25 garments, read against your style
+                    17 garments, read against your style
                   </h3>
                   <p className="mt-3 leading-7 text-ink/68">
                     A relaxed, colour-confident wardrobe built on easy layers. The brights work
@@ -304,7 +266,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
                               <Image
                                 src={garment.image}
                                 alt=""
-                                className={`size-9 shrink-0 rounded-lg object-cover ${garment.imageClassName}`}
+                                className={`size-9 shrink-0 rounded-lg object-cover ${garment.tint}`}
                                 sizes="36px"
                               />
                               <span className="text-xs font-bold">{garment.name}</span>

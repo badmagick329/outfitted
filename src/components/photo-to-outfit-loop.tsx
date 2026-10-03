@@ -1,14 +1,10 @@
 "use client";
 
-import Image, { type StaticImageData } from "next/image";
+import Image from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useInView, type TargetAndTransition } from "motion/react";
 import { Pause, Play } from "lucide-react";
-import berryJacket from "../../public/landing/berry-chore-jacket.webp";
-import citrusKnit from "../../public/landing/citrus-knit.webp";
-import offWhiteTee from "../../public/landing/off-white-tee.webp";
-import stoneTrousers from "../../public/landing/stone-trousers.webp";
-import tealShirt from "../../public/landing/teal-camp-shirt.webp";
+import { demoGarment, demoWardrobe, type DemoGarment } from "@/components/demo-wardrobe";
 
 /*
  * The landing hero's "photo to outfit" loop: a garment is photographed, its details are read, it
@@ -87,14 +83,15 @@ function pose(
   return { ...place(frame), opacity, scale, transition };
 }
 
-type Tile = { image: StaticImageData; slot: number; seat?: number; tint: string };
+type Tile = { garment: DemoGarment; slot: number; seat?: number };
 
 const tiles: Tile[] = [
-  { image: offWhiteTee, slot: 0, seat: 0, tint: "bg-mist" },
-  { image: tealShirt, slot: 1, tint: "bg-peach" },
-  { image: stoneTrousers, slot: 2, seat: 2, tint: "bg-peach" },
-  { image: citrusKnit, slot: 3, tint: "bg-mist" },
+  { garment: demoGarment("off-white-tee"), slot: 0, seat: 0 },
+  { garment: demoGarment("teal-camp-shirt"), slot: 1 },
+  { garment: demoGarment("stone-trousers"), slot: 2, seat: 2 },
+  { garment: demoGarment("citrus-knit"), slot: 3 },
 ];
+const jacket = demoGarment("berry-chore-jacket");
 const JACKET_SLOT = 4;
 const JACKET_SEAT = 1;
 const MORE_SLOT = 5;
@@ -243,7 +240,8 @@ export function PhotoToOutfitLoop() {
       : at > phaseIndex("ask")
         ? prompt.length
         : 0;
-  const pieceCount = at >= phaseIndex("filed") ? 25 : 24;
+  // The jacket is the sample wardrobe's newest piece, so the count lands on the full wardrobe.
+  const pieceCount = at >= phaseIndex("filed") ? demoWardrobe.length : demoWardrobe.length - 1;
   const reading = phase === "read";
   const filing = phase === "file" || phase === "filed";
   const deskOpen = phase === "ask" || phase === "outfit";
@@ -304,10 +302,10 @@ export function PhotoToOutfitLoop() {
             animate={fx(tileTarget(tile.slot, tile.seat, phase))}
           >
             <div
-              className={`aspect-[4/5] overflow-hidden rounded-[2.2cqw] border-2 border-ink shadow-[0.8cqw_0.8cqw_0_var(--color-ink)] ${tile.tint}`}
+              className={`aspect-[4/5] overflow-hidden rounded-[2.2cqw] border-2 border-ink shadow-[0.8cqw_0.8cqw_0_var(--color-ink)] ${tile.garment.tint}`}
             >
               <Image
-                src={tile.image}
+                src={tile.garment.image}
                 alt=""
                 className="size-full object-cover"
                 sizes="(max-width: 640px) 25vw, 145px"
@@ -322,7 +320,9 @@ export function PhotoToOutfitLoop() {
           animate={fx(tileTarget(MORE_SLOT, undefined, phase))}
         >
           <div className="grid aspect-[4/5] place-items-center rounded-[2.2cqw] border-2 border-ink bg-ink text-canvas shadow-[0.8cqw_0.8cqw_0_var(--color-citrus)]">
-            <span className="font-mono text-[length:max(11px,3.2cqw)] font-bold">+20</span>
+            <span className="font-mono text-[length:max(11px,3.2cqw)] font-bold">
+              +{demoWardrobe.length - tiles.length - 1}
+            </span>
           </div>
         </motion.div>
 
@@ -433,9 +433,9 @@ export function PhotoToOutfitLoop() {
           animate={fx(jacketTarget(phase))}
         >
           <article className="overflow-hidden rounded-[2.2cqw] border-2 border-ink bg-canvas shadow-[1cqw_1cqw_0_var(--color-berry)]">
-            <div className="relative aspect-[4/5] overflow-hidden bg-[#eadfce]">
+            <div className={`relative aspect-[4/5] overflow-hidden ${jacket.tint}`}>
               <Image
-                src={berryJacket}
+                src={jacket.image}
                 alt=""
                 className="size-full object-cover"
                 loading="eager"
