@@ -1,32 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, ListChecks, LockKeyhole, Palette } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  Check,
+  Eye,
+  ListChecks,
+  LockKeyhole,
+  Palette,
+  Shirt,
+} from "lucide-react";
 import { BrandWordmark } from "@/components/brand";
 import { demoGarment, demoWardrobe } from "@/components/demo-wardrobe";
 import { OutfitOccasionDemo } from "@/components/outfit-occasion-demo";
 import { PhotoToOutfitLoop } from "@/components/photo-to-outfit-loop";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Marquee } from "@/components/ui/marquee";
-import { WardrobeFilterDemo } from "@/components/wardrobe-filter-demo";
 import type { AccessMode } from "@/features/access/contracts";
-
-const steps = [
-  {
-    number: "01",
-    title: "Photograph it",
-    body: "From your phone or computer, one piece at a time or a whole batch.",
-  },
-  {
-    number: "02",
-    title: "Details fill in",
-    body: "Optional AI notes category, colour, material and season. Edit anything.",
-  },
-  {
-    number: "03",
-    title: "Browse and filter",
-    body: "Jump between sections and style tags; archive what is out of rotation.",
-  },
-];
 
 // Mirrors the member review report: entries cite the garments they are about.
 const reviewEntries = [
@@ -153,26 +143,54 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
               Outfitted keeps the useful details close to the photograph, without turning your
-              wardrobe into an admin job. Have a go with this sample wardrobe.
+              wardrobe into an admin job.
             </p>
           </div>
         </BlurFade>
 
-        <ol className="mt-10 grid gap-5 sm:grid-cols-3">
-          {steps.map((step, index) => (
-            <BlurFade key={step.number} inView delay={index * 0.08}>
-              <li className="border-t-2 border-ink pt-4">
-                <span className="font-mono text-xs font-bold text-berry">{step.number}</span>
-                <h3 className="mt-2 text-xl font-bold tracking-[-0.04em]">{step.title}</h3>
-                <p className="mt-1.5 leading-7 text-ink/65">{step.body}</p>
-              </li>
-            </BlurFade>
-          ))}
-        </ol>
-
-        <BlurFade inView delay={0.1} className="mt-12">
-          <WardrobeFilterDemo />
-        </BlurFade>
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {[
+            {
+              icon: Camera,
+              number: "01",
+              title: "Start with a photo",
+              body: "Add a garment from your phone or computer. Outfitted keeps the image at the centre of the record.",
+              colour: "bg-peach",
+            },
+            {
+              icon: Shirt,
+              number: "02",
+              title: "Keep what matters",
+              body: "Name it, describe it and note the colour, material or fit. Leave anything blank when it is not useful.",
+              colour: "bg-mist",
+            },
+            {
+              icon: Eye,
+              number: "03",
+              title: "See the full wardrobe",
+              body: "Browse your active pieces as a visual collection and tuck things into the archive when they are out of rotation.",
+              colour: "bg-citrus",
+            },
+          ].map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <BlurFade key={item.number} inView delay={index * 0.08} className="h-full">
+                <article
+                  className={`flex h-full flex-col rounded-[1.75rem] border-2 border-ink p-6 shadow-[6px_6px_0_var(--color-ink)] sm:p-7 ${item.colour}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="grid size-12 place-items-center rounded-2xl border-2 border-ink bg-canvas">
+                      <Icon size={22} />
+                    </span>
+                    <span className="font-mono text-xs font-bold text-ink/45">{item.number}</span>
+                  </div>
+                  <h3 className="mt-8 text-2xl font-bold tracking-[-0.045em]">{item.title}</h3>
+                  <p className="mt-3 leading-7 text-ink/68">{item.body}</p>
+                </article>
+              </BlurFade>
+            );
+          })}
+        </div>
       </section>
 
       <section
