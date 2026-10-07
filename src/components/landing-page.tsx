@@ -11,7 +11,7 @@ import {
   Plus,
   Shirt,
 } from "lucide-react";
-import { BatchUploadDemo } from "@/components/batch-upload-demo";
+import { BatchImportDemo } from "@/components/batch-import-demo";
 import { BrandWordmark } from "@/components/brand";
 import { demoGarment, demoWardrobe } from "@/components/demo-wardrobe";
 import { OutfitOccasionDemo } from "@/components/outfit-occasion-demo";
@@ -115,7 +115,7 @@ function faqEntries(isPublic: boolean) {
     },
     {
       question: "Which photos can I upload?",
-      answer: `JPEG, PNG, WebP or HEIC, up to ${maxPhotoMegabytes} MB each, with up to ${maxPhotosPerGarment} photos per garment. A batch upload takes up to ${maxBatchGarments} photos at once, one garment per photo.`,
+      answer: `JPEG, PNG, WebP or HEIC, up to ${maxPhotoMegabytes} MB each, with up to ${maxPhotosPerGarment} photos per garment. A batch import takes up to ${maxBatchGarments} photos at once, one garment per photo.`,
     },
     {
       question: "Can I take clothes out again?",
@@ -306,7 +306,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
           </div>
         </BlurFade>
         <BlurFade inView delay={0.1} className="mt-10">
-          <BatchUploadDemo />
+          <BatchImportDemo />
         </BlurFade>
       </section>
 

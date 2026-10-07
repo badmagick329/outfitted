@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useUploadDraft } from "@/components/upload-draft-provider";
 import {
   batchFileKey,
-  batchUploadConcurrency,
+  batchImportConcurrency,
   maxBatchGarments,
   runWithConcurrency,
 } from "@/features/wardrobe/domain/batch-import";
@@ -71,7 +71,7 @@ function fileError(file: File) {
   return null;
 }
 
-export function BatchUploadForm() {
+export function BatchImportForm() {
   const { trackAnalysis } = useAnalysisStatus();
   const { batchFiles, setBatchFiles, clearBatchFiles } = useUploadDraft();
   const [entries, setEntries] = useState<ImportEntry[]>(() => batchFiles.map(createEntry));
@@ -224,7 +224,7 @@ export function BatchUploadForm() {
     setError("");
     setNotice("");
     clearBatchFiles();
-    await runWithConcurrency(waiting, batchUploadConcurrency, uploadEntry);
+    await runWithConcurrency(waiting, batchImportConcurrency, uploadEntry);
     setRunning(false);
   }
 

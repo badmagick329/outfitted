@@ -1,8 +1,8 @@
-import { BatchUploadForm } from "@/components/batch-upload-form";
+import { BatchImportForm } from "@/components/batch-import-form";
 import { MemberPageHeader } from "@/components/member-page-header";
 import { WardrobeBackLink } from "@/components/wardrobe-back-link";
 
-export default function BatchUploadPage() {
+export default function BatchImportPage() {
   return (
     <>
       <MemberPageHeader
@@ -11,7 +11,7 @@ export default function BatchUploadPage() {
         backLink={<WardrobeBackLink />}
         tone="peach"
       />
-      <BatchUploadForm />
+      <BatchImportForm />
     </>
   );
 }

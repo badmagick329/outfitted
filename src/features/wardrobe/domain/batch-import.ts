@@ -1,5 +1,5 @@
 export const maxBatchGarments = 20;
-export const batchUploadConcurrency = 3;
+export const batchImportConcurrency = 3;
 
 export function batchFileKey(file: Pick<File, "name" | "size" | "lastModified" | "type">) {
   return `${file.name}:${file.size}:${file.lastModified}:${file.type}`;

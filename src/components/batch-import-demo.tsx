@@ -11,7 +11,7 @@ import {
 } from "@/components/demo-playback";
 import { demoGarment, demoWardrobe, type DemoGarmentId } from "@/components/demo-wardrobe";
 import { MemberStatusBadge } from "@/components/member-status-badge";
-import { batchUploadConcurrency, maxBatchGarments } from "@/features/wardrobe/domain/batch-import";
+import { batchImportConcurrency, maxBatchGarments } from "@/features/wardrobe/domain/batch-import";
 import { maxPhotoSizeBytes } from "@/features/wardrobe/domain/photo-files";
 
 /*
@@ -48,7 +48,7 @@ type Timing = { start: number; added: number; reading: number; done: number };
 
 // Replays runWithConcurrency: each photo takes the first upload slot to come free.
 const timings: Timing[] = (() => {
-  const slots = Array<number>(batchUploadConcurrency).fill(IMPORT_AT);
+  const slots = Array<number>(batchImportConcurrency).fill(IMPORT_AT);
   return batch.map((entry, index) => {
     const slot = slots.indexOf(Math.min(...slots));
     const start = slots[slot];
@@ -78,7 +78,7 @@ function uploadStatus(timing: Timing, t: number): UploadStatus {
   return t < timing.added ? "uploading" : "added";
 }
 
-// Mirrors the tray chips in batch-upload-form.tsx.
+// Mirrors the tray chips in batch-import-form.tsx.
 const chipStyles: Record<UploadStatus, string> = {
   waiting: "border-line bg-canvas text-ink/60",
   uploading: "border-citrus bg-citrus/70 text-ink",
@@ -92,7 +92,7 @@ const maxPhotoMegabytes = maxPhotoSizeBytes / 1024 / 1024;
 
 const panelLabel = "font-mono text-[10px] font-bold uppercase tracking-[0.14em]";
 
-export function BatchUploadDemo() {
+export function BatchImportDemo() {
   const root = useRef<HTMLDivElement>(null);
   const inView = useInView(root, { amount: 0.3 });
   const reducedMotion = useReducedMotionPreference();
@@ -144,7 +144,7 @@ export function BatchUploadDemo() {
       <div ref={root} className="@container relative">
         <div
           role="img"
-          aria-label={`Animated demo: ${batch.length} garment photos upload ${batchUploadConcurrency} at a time, then appear in the wardrobe while their details are read.`}
+          aria-label={`Animated demo: ${batch.length} garment photos upload ${batchImportConcurrency} at a time, then appear in the wardrobe while their details are read.`}
           className="grid gap-5 @4xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] @4xl:items-start"
         >
           <div className="rounded-[1.75rem] border-2 border-ink bg-canvas p-4 shadow-[8px_8px_0_var(--color-citrus)] sm:p-5">
@@ -221,7 +221,7 @@ export function BatchUploadDemo() {
                   <p className="mt-2 text-xs leading-5 text-ink/55">
                     {addedCount === batch.length
                       ? "Your new garments are ready. AI details will continue filling in where enabled."
-                      : `Uploading ${batchUploadConcurrency} at a time.`}
+                      : `Uploading ${batchImportConcurrency} at a time.`}
                   </p>
                 </>
               ) : (
@@ -302,7 +302,7 @@ export function BatchUploadDemo() {
         <DemoPauseButton
           paused={paused}
           onToggle={() => setPaused((current) => !current)}
-          label="the batch upload demo"
+          label="the batch import demo"
           className="absolute -bottom-4 right-4"
         />
       </div>

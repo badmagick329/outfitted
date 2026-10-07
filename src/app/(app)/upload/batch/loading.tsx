@@ -1,6 +1,6 @@
 import { HeaderSkeleton, LoadingShell, Skeleton } from "@/components/member-loading-skeleton";
 
-export default function BatchUploadLoading() {
+export default function BatchImportLoading() {
   return (
     <LoadingShell>
       <HeaderSkeleton tone="peach" back />

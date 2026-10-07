@@ -19,7 +19,7 @@ const capabilities: Array<{ icon: LucideIcon; title: string; description: string
   },
   {
     icon: Palette,
-    title: "Style profile",
+    title: "Style notes",
     description: "Capture your preferences so suggestions and reviews fit you better.",
   },
   {
