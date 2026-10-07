@@ -1,7 +1,7 @@
 # Repository instructions
 
 - Project context, decisions and agent-created documents live under `./.ignore/docs`. Start at its `README.md` and follow it for placement and lifecycle.
-- UI work follows `STYLE.md` and is done when it meets that file's QA bar.
+- A change is finished only when these docs describe it. Before reporting or committing, search `.ignore/docs` for what the change touched and update every document it made stale, following the index's *Keeping it current*.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
