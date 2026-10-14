@@ -1,16 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Camera,
-  Check,
-  Eye,
-  ListChecks,
-  LockKeyhole,
-  Palette,
-  Plus,
-  Shirt,
-} from "lucide-react";
+import { ArrowRight, Check, ListChecks, LockKeyhole, Palette, Plus } from "lucide-react";
 import { BatchImportDemo } from "@/components/batch-import-demo";
 import { BrandWordmark } from "@/components/brand";
 import { demoGarment, demoWardrobe } from "@/components/demo-wardrobe";
@@ -96,12 +86,18 @@ function faqEntries(isPublic: boolean) {
         : "Sign in with your Google account; that is the only way in. New accounts wait for an administrator to approve them, and you can start adding clothes as soon as yours is.",
     },
     {
+      // Revisit when add-to-home-screen (OUT-21) ships.
+      question: "Does it work on my phone?",
+      answer:
+        "Yes. Outfitted is a website with a layout made for phones, so you open it in your phone's browser. There is no app to install.",
+    },
+    {
       question: "What does it cost?",
       answer: "Nothing. There are no plans, payments or card details.",
     },
     {
       question: "Do I have to use the AI?",
-      answer: `No. AI is a separate approval: once you are in, you can request AI access and an administrator reviews it. Without it you can still upload photos (up to ${maxPhotosPerGarment} per garment), edit every detail by hand, browse, filter, archive and delete. The Outfit Desk, saved outfits, wardrobe reviews and style notes need AI access.`,
+      answer: `No. AI is a separate approval: once you are in, you can request AI access and an administrator reviews it. Without it you can still upload photos (up to ${maxPhotosPerGarment} per garment), edit every detail by hand, browse, filter, archive and delete. You pick each garment's category yourself, and the filters you use in a shop work from those categories. The Outfit Desk, saved outfits, wardrobe reviews and style notes need AI access.`,
     },
     {
       question: "What does the AI see?",
@@ -134,7 +130,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
         <BrandWordmark />
         <nav className="flex items-center gap-3" aria-label="Main navigation">
           <a
-            href="#how-it-works"
+            href="#from-anywhere"
             className="hidden text-sm font-semibold text-ink/65 transition hover:text-ink sm:block"
           >
             How it works
@@ -216,140 +212,29 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
       </section>
 
       <section
-        id="how-it-works"
-        className="mx-auto w-full max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-32"
+        aria-labelledby="review-heading"
+        className="bg-teal px-5 py-24 text-canvas sm:px-8 lg:py-32"
       >
-        <BlurFade inView>
-          <div className="max-w-3xl">
-            <h2 className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl">
-              Your clothes, easy to see and easy to remember.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
-              Outfitted keeps the useful details close to the photograph, without turning your
-              wardrobe into an admin job.
-            </p>
-          </div>
-        </BlurFade>
-
-        <div className="mt-14 grid gap-5 md:grid-cols-3">
-          {[
-            {
-              icon: Camera,
-              number: "01",
-              title: "Start with a photo",
-              body: "Add a garment from your phone or computer. Outfitted keeps the image at the centre of the record.",
-              colour: "bg-peach",
-            },
-            {
-              icon: Shirt,
-              number: "02",
-              title: "Keep what matters",
-              body: "Name it, describe it and note the colour, material or fit. Leave anything blank when it is not useful.",
-              colour: "bg-mist",
-            },
-            {
-              icon: Eye,
-              number: "03",
-              title: "See the full wardrobe",
-              body: "Browse your active pieces as a visual collection and tuck things into the archive when they are out of rotation.",
-              colour: "bg-citrus",
-            },
-          ].map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <BlurFade key={item.number} inView delay={index * 0.08} className="h-full">
-                <article
-                  className={`flex h-full flex-col rounded-[1.75rem] border-2 border-ink p-6 shadow-[6px_6px_0_var(--color-ink)] sm:p-7 ${item.colour}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <span className="grid size-12 place-items-center rounded-2xl border-2 border-ink bg-canvas">
-                      <Icon size={22} />
-                    </span>
-                    <span className="font-mono text-xs font-bold text-ink/45">{item.number}</span>
-                  </div>
-                  <h3 className="mt-8 text-2xl font-bold tracking-[-0.045em]">{item.title}</h3>
-                  <p className="mt-3 leading-7 text-ink/68">{item.body}</p>
-                </article>
-              </BlurFade>
-            );
-          })}
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="batch-heading"
-        className="mx-auto w-full max-w-7xl px-5 pb-24 sm:px-8 lg:px-10 lg:pb-32"
-      >
-        <BlurFade inView>
-          <div className="max-w-3xl">
-            <h2
-              id="batch-heading"
-              className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
-            >
-              Your whole wardrobe in an evening.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
-              Choose a pile of photos in one go. Each becomes its own garment, uploads run three at
-              a time, and with AI access the details fill in while you carry on. This sample batch
-              is sped up.
-            </p>
-            <ul className="mt-6 flex flex-wrap gap-2">
-              {batchFacts.map((fact) => (
-                <li
-                  key={fact}
-                  className="rounded-full border-2 border-ink bg-canvas px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em]"
-                >
-                  {fact}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </BlurFade>
-        <BlurFade inView delay={0.1} className="mt-10">
-          <BatchImportDemo />
-        </BlurFade>
-      </section>
-
-      <section
-        aria-labelledby="outfit-desk-heading"
-        className="border-y-2 border-ink bg-mist px-5 py-24 sm:px-8 lg:py-32"
-      >
-        <div className="mx-auto w-full max-w-7xl lg:px-2">
-          <BlurFade inView>
-            <div className="max-w-3xl">
-              <h2
-                id="outfit-desk-heading"
-                className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
-              >
-                Dressed for whatever is next.
-              </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
-                Tell the Outfit Desk where you are going. It picks from the clothes you already own
-                and says why. Try it on the sample wardrobe; these suggestions are pre-written
-                examples.
-              </p>
-            </div>
-          </BlurFade>
-          <BlurFade inView delay={0.1} className="mt-10">
-            <OutfitOccasionDemo />
-          </BlurFade>
-        </div>
-      </section>
-
-      <section className="bg-teal px-5 py-24 text-canvas sm:px-8 lg:py-32">
         <div className="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-20">
           <BlurFade inView direction="left">
             <div>
               <span className="inline-flex rounded-2xl bg-citrus p-3 text-ink">
                 <ListChecks size={24} />
               </span>
-              <h2 className="mt-7 text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl">
-                A little help, when you want it.
+              <h2
+                id="review-heading"
+                className="mt-7 text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
+              >
+                See what&apos;s missing.
               </h2>
               <p className="mt-6 max-w-xl text-lg leading-8 text-canvas/72">
-                Optional AI fills in garment details and suggests outfits. For the bigger picture,
-                ask for a wardrobe review against your own style notes: what is working, what is
-                missing, and the garments behind each point. Every detail stays yours to edit.
+                A wardrobe review reads your whole wardrobe against your own style notes. It gives
+                you a summary, then strengths, gaps and observations, each naming the garments
+                behind it.
+              </p>
+              <p className="mt-4 max-w-xl text-lg leading-8 text-canvas/72">
+                Reviews, garment reading and outfit suggestions need AI access. You request it once
+                you are in, and an administrator approves it.
               </p>
             </div>
           </BlurFade>
@@ -419,6 +304,66 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
       </section>
 
       <section
+        aria-labelledby="batch-heading"
+        className="mx-auto w-full max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-32"
+      >
+        <BlurFade inView>
+          <div className="max-w-3xl">
+            <h2
+              id="batch-heading"
+              className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
+            >
+              Add up to {maxBatchGarments} garments at once.
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
+              Choose a pile of photos in one go. Each becomes its own garment, uploads run three at
+              a time, and with AI access the details fill in while you carry on. This sample batch
+              is sped up.
+            </p>
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {batchFacts.map((fact) => (
+                <li
+                  key={fact}
+                  className="rounded-full border-2 border-ink bg-canvas px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em]"
+                >
+                  {fact}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </BlurFade>
+        <BlurFade inView delay={0.1} className="mt-10">
+          <BatchImportDemo />
+        </BlurFade>
+      </section>
+
+      <section
+        aria-labelledby="outfit-desk-heading"
+        className="border-y-2 border-ink bg-mist px-5 py-24 sm:px-8 lg:py-32"
+      >
+        <div className="mx-auto w-full max-w-7xl lg:px-2">
+          <BlurFade inView>
+            <div className="max-w-3xl">
+              <h2
+                id="outfit-desk-heading"
+                className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
+              >
+                Outfits from clothes you already own.
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
+                When you want ideas, tell the Outfit Desk where you are going. It picks from your
+                wardrobe and says why. Try it on the sample wardrobe; these suggestions are
+                pre-written examples.
+              </p>
+            </div>
+          </BlurFade>
+          <BlurFade inView delay={0.1} className="mt-10">
+            <OutfitOccasionDemo />
+          </BlurFade>
+        </div>
+      </section>
+
+      <section
         id="privacy"
         className="mx-auto grid w-full max-w-7xl gap-12 px-5 py-24 sm:px-8 lg:grid-cols-2 lg:items-center lg:px-10 lg:py-32"
       >
@@ -434,7 +379,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
         <BlurFade inView direction="right" delay={0.08}>
           <div>
             <h2 className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl">
-              Your wardrobe is yours.
+              Only you can see your wardrobe.
             </h2>
             <p className="mt-6 max-w-xl text-lg leading-8 text-ink/65">
               Outfitted is a private catalogue, not a social network. Garment photos are served
@@ -471,7 +416,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
                 id="faq-heading"
                 className="text-4xl font-bold leading-[0.95] tracking-[-0.065em] sm:text-6xl"
               >
-                Questions, answered.
+                Common questions.
               </h2>
               <p className="mt-5 max-w-md text-lg leading-8 text-ink/65">
                 How access works, what the AI sees, and where your photos live.
@@ -503,12 +448,14 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
         <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-8 rounded-[2rem] border-2 border-ink bg-berry p-7 text-canvas shadow-[8px_8px_0_var(--color-citrus)] sm:p-10 lg:flex-row lg:items-end lg:p-14">
           <div>
             <h2 className="max-w-3xl text-4xl font-bold leading-[0.95] tracking-[-0.06em] sm:text-6xl">
-              Put your wardrobe within reach.
+              {isPublic
+                ? "Sign in to start your wardrobe."
+                : "Request access to start your wardrobe."}
             </h2>
             <p className="mt-4 max-w-xl text-lg leading-8 text-canvas/72">
               {isPublic
-                ? "Sign in with your Google account and start adding your clothes right away."
-                : "Request access with your Google account. Once approved, you can start adding your clothes."}
+                ? "Use your Google account. You can add clothes straight away."
+                : "Use your Google account. Once an administrator approves it, you can add your clothes."}
             </p>
           </div>
           <Link
