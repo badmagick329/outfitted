@@ -39,13 +39,13 @@ const reviewEntries = [
   },
   {
     kind: "Gap",
-    title: "Nothing for wet feet",
+    title: "No smart middle layer",
     detail:
-      "Suede boots and white trainers both dread the rain. A leather pair would finish the mac on wet commutes.",
+      "Nothing sits between the white oxford and the navy overcoat. A navy blazer would work with both the oxford and the stone trousers.",
     garments: [
-      demoGarment("chelsea-boots"),
-      demoGarment("white-trainers"),
-      demoGarment("khaki-mac"),
+      demoGarment("oxford-shirt"),
+      demoGarment("navy-overcoat"),
+      demoGarment("stone-trousers"),
     ],
     tone: "bg-peach/55",
   },
@@ -349,7 +349,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
               <p className="mt-6 max-w-xl text-lg leading-8 text-canvas/72">
                 Optional AI fills in garment details and suggests outfits. For the bigger picture,
                 ask for a wardrobe review against your own style notes: what is working, what is
-                missing, and the pieces behind each point. Every detail stays yours to edit.
+                missing, and the garments behind each point. Every detail stays yours to edit.
               </p>
             </div>
           </BlurFade>
@@ -372,7 +372,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
                     Wardrobe review
                   </p>
                   <h3 className="mt-1 text-xl font-bold tracking-[-0.03em]">
-                    17 garments, read against your style
+                    {demoWardrobe.length} garments, read against your style
                   </h3>
                   <p className="mt-3 leading-7 text-ink/68">
                     A relaxed, colour-confident wardrobe built on easy layers. The brights work

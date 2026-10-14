@@ -2,7 +2,6 @@ import type { StaticImageData } from "next/image";
 import berryJacket from "../../public/landing/berry-chore-jacket.webp";
 import blackRollneck from "../../public/landing/black-rollneck.webp";
 import bretonTop from "../../public/landing/breton-top.webp";
-import chelseaBoots from "../../public/landing/chelsea-boots.webp";
 import citrusKnit from "../../public/landing/citrus-knit.webp";
 import creamCardigan from "../../public/landing/cream-cardigan.webp";
 import greyHoodie from "../../public/landing/grey-hoodie.webp";
@@ -15,22 +14,29 @@ import oxfordShirt from "../../public/landing/oxford-shirt.webp";
 import rustOvershirt from "../../public/landing/rust-overshirt.webp";
 import stoneTrousers from "../../public/landing/stone-trousers.webp";
 import tealShirt from "../../public/landing/teal-camp-shirt.webp";
-import whiteTrainers from "../../public/landing/white-trainers.webp";
-import type { CategoryGroup } from "@/features/wardrobe/domain/category-groups";
+import {
+  categoryGroupForCategory,
+  type CategoryGroup,
+  type detailedCategoryOptions,
+} from "@/features/wardrobe/domain/category-groups";
 
 /*
  * The sample wardrobe every landing-page demo draws from, so the hero, catalogue, Outfit Desk and
- * review all describe one believable member. Categories and sections use the app's own
- * vocabulary; shoes sit in "other" because the catalogue has no footwear group.
+ * review all describe one believable member. Every value is one the app could really hold:
+ * categories come from the controlled list, each section is derived from its category, and the
+ * style tags are aesthetic descriptors that pass the garment-analysis prompt's rules (formality
+ * and seasons have their own fields, so they never appear as tags).
  */
 
-export const demoTags = ["Casual", "Smart", "Cosy", "Rain-ready", "Warm weather"] as const;
+export const demoTags = ["Cosy", "Minimal", "Preppy", "Retro", "Workwear"] as const;
 export type DemoTag = (typeof demoTags)[number];
+
+type DemoCategory = (typeof detailedCategoryOptions)[number][0];
 
 export type DemoGarment = {
   id: string;
   name: string;
-  category: string;
+  category: DemoCategory;
   colour: string;
   section: CategoryGroup;
   tags: readonly DemoTag[];
@@ -39,14 +45,13 @@ export type DemoGarment = {
   tint: string;
 };
 
-export const demoWardrobe = [
+const garments = [
   {
     id: "off-white-tee",
     name: "Off-white crew tee",
     category: "T-shirt",
     colour: "Warm white",
-    section: "tops",
-    tags: ["Casual", "Warm weather"],
+    tags: ["Minimal"],
     image: offWhiteTee,
     tint: "bg-mist",
   },
@@ -55,8 +60,7 @@ export const demoWardrobe = [
     name: "Teal camp shirt",
     category: "Shirt",
     colour: "Deep teal",
-    section: "tops",
-    tags: ["Casual", "Warm weather"],
+    tags: ["Retro"],
     image: tealShirt,
     tint: "bg-peach",
   },
@@ -65,8 +69,7 @@ export const demoWardrobe = [
     name: "Berry chore jacket",
     category: "Jacket",
     colour: "Berry red",
-    section: "outerwear",
-    tags: ["Casual"],
+    tags: ["Workwear"],
     image: berryJacket,
     tint: "bg-[#eadfce]",
   },
@@ -75,8 +78,7 @@ export const demoWardrobe = [
     name: "Stone pleated trousers",
     category: "Trousers",
     colour: "Stone",
-    section: "bottoms",
-    tags: ["Casual", "Smart"],
+    tags: ["Minimal"],
     image: stoneTrousers,
     tint: "bg-peach",
   },
@@ -85,8 +87,7 @@ export const demoWardrobe = [
     name: "Citrus knit",
     category: "Sweater",
     colour: "Citrus yellow",
-    section: "tops",
-    tags: ["Casual", "Cosy"],
+    tags: ["Cosy", "Retro"],
     image: citrusKnit,
     tint: "bg-mist",
   },
@@ -95,8 +96,7 @@ export const demoWardrobe = [
     name: "Navy overcoat",
     category: "Coat",
     colour: "Navy",
-    section: "outerwear",
-    tags: ["Smart", "Cosy"],
+    tags: ["Minimal"],
     image: navyOvercoat,
     tint: "bg-mist",
   },
@@ -105,8 +105,7 @@ export const demoWardrobe = [
     name: "Khaki mac",
     category: "Coat",
     colour: "Khaki",
-    section: "outerwear",
-    tags: ["Smart", "Rain-ready"],
+    tags: ["Preppy"],
     image: khakiMac,
     tint: "bg-[#eadfce]",
   },
@@ -115,8 +114,7 @@ export const demoWardrobe = [
     name: "Indigo jeans",
     category: "Jeans",
     colour: "Dark indigo",
-    section: "bottoms",
-    tags: ["Casual"],
+    tags: ["Workwear"],
     image: indigoJeans,
     tint: "bg-peach",
   },
@@ -125,8 +123,7 @@ export const demoWardrobe = [
     name: "White oxford shirt",
     category: "Shirt",
     colour: "White",
-    section: "tops",
-    tags: ["Smart"],
+    tags: ["Preppy"],
     image: oxfordShirt,
     tint: "bg-mist",
   },
@@ -135,8 +132,7 @@ export const demoWardrobe = [
     name: "Black roll-neck",
     category: "Sweater",
     colour: "Black",
-    section: "tops",
-    tags: ["Smart", "Cosy"],
+    tags: ["Cosy", "Minimal"],
     image: blackRollneck,
     tint: "bg-[#eadfce]",
   },
@@ -145,8 +141,7 @@ export const demoWardrobe = [
     name: "Cream cable cardigan",
     category: "Cardigan",
     colour: "Cream",
-    section: "tops",
-    tags: ["Cosy"],
+    tags: ["Cosy", "Preppy"],
     image: creamCardigan,
     tint: "bg-mist",
   },
@@ -155,8 +150,7 @@ export const demoWardrobe = [
     name: "Breton top",
     category: "Top",
     colour: "Navy and white",
-    section: "tops",
-    tags: ["Casual", "Warm weather"],
+    tags: ["Preppy"],
     image: bretonTop,
     tint: "bg-peach",
   },
@@ -165,8 +159,7 @@ export const demoWardrobe = [
     name: "Olive chino shorts",
     category: "Shorts",
     colour: "Olive",
-    section: "bottoms",
-    tags: ["Casual", "Warm weather"],
+    tags: ["Workwear"],
     image: oliveShorts,
     tint: "bg-[#eadfce]",
   },
@@ -175,8 +168,7 @@ export const demoWardrobe = [
     name: "Grey marl hoodie",
     category: "Hoodie",
     colour: "Grey marl",
-    section: "tops",
-    tags: ["Casual", "Cosy"],
+    tags: ["Cosy"],
     image: greyHoodie,
     tint: "bg-peach",
   },
@@ -185,36 +177,20 @@ export const demoWardrobe = [
     name: "Rust cord overshirt",
     category: "Overshirt",
     colour: "Rust",
-    section: "outerwear",
-    tags: ["Casual", "Cosy"],
+    tags: ["Retro", "Workwear"],
     image: rustOvershirt,
     tint: "bg-mist",
   },
-  {
-    id: "white-trainers",
-    name: "White trainers",
-    category: "Trainers",
-    colour: "White",
-    section: "other",
-    tags: ["Casual", "Warm weather"],
-    image: whiteTrainers,
-    tint: "bg-mist",
-  },
-  {
-    id: "chelsea-boots",
-    name: "Suede Chelsea boots",
-    category: "Boots",
-    colour: "Tobacco brown",
-    section: "other",
-    tags: ["Smart", "Cosy"],
-    image: chelseaBoots,
-    tint: "bg-mist",
-  },
-] as const satisfies readonly DemoGarment[];
+] as const satisfies readonly Omit<DemoGarment, "section">[];
 
-export type DemoGarmentId = (typeof demoWardrobe)[number]["id"];
+export type DemoGarmentId = (typeof garments)[number]["id"];
 
-const byId = new Map<string, DemoGarment>(demoWardrobe.map((garment) => [garment.id, garment]));
+export const demoWardrobe: readonly DemoGarment[] = garments.map((garment) => ({
+  ...garment,
+  section: categoryGroupForCategory(garment.category),
+}));
+
+const byId = new Map(demoWardrobe.map((garment) => [garment.id, garment]));
 
 export function demoGarment(id: DemoGarmentId): DemoGarment {
   return byId.get(id)!;

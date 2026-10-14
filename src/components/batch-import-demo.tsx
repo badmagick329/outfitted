@@ -17,7 +17,7 @@ import { maxPhotoSizeBytes } from "@/features/wardrobe/domain/photo-files";
 /*
  * A scripted run of the real batch import: photos land in the tray, upload a few at a time with
  * the tray's own status chips, and appear in the wardrobe where the analysis badges take over.
- * Five garments are already filed, so the batch completes the 17-piece sample wardrobe.
+ * The garments outside the batch are already filed, so the batch completes the sample wardrobe.
  *
  * One clock drives everything. Each garment's moments are precomputed by replaying the import's
  * worker pool, and the clock jumps from one moment to the next, so pausing simply stops the jump.
@@ -34,8 +34,6 @@ const batch: { id: DemoGarmentId; file: string; uploadMs: number }[] = [
   { id: "olive-shorts", file: "IMG_4140.HEIC", uploadMs: 900 },
   { id: "grey-hoodie", file: "hoodie.png", uploadMs: 1500 },
   { id: "rust-overshirt", file: "IMG_4142.HEIC", uploadMs: 1100 },
-  { id: "white-trainers", file: "IMG_4144.HEIC", uploadMs: 1000 },
-  { id: "chelsea-boots", file: "IMG_4146.HEIC", uploadMs: 1300 },
 ];
 
 const batchIds = new Set<string>(batch.map((entry) => entry.id));

@@ -24,28 +24,28 @@ const occasions: Occasion[] = [
   {
     id: "saturday-in-town",
     label: "Saturday in town",
-    picks: ["berry-chore-jacket", "off-white-tee", "stone-trousers", "white-trainers"],
+    picks: ["berry-chore-jacket", "off-white-tee", "stone-trousers"],
     reason:
       "Easy layers: the berry jacket does the talking while the tee and stone trousers keep it relaxed.",
   },
   {
     id: "dinner-out",
     label: "Dinner out",
-    picks: ["navy-overcoat", "black-rollneck", "stone-trousers", "chelsea-boots"],
+    picks: ["navy-overcoat", "black-rollneck", "stone-trousers"],
     reason:
-      "Dark, quiet layers with stone trousers for contrast. The suede boots dress it up without trying.",
+      "Dark, quiet layers over stone trousers. The roll-neck looks sharp without needing a tie.",
   },
   {
     id: "summer-weekend",
     label: "A summer weekend",
-    picks: ["teal-camp-shirt", "breton-top", "olive-shorts", "white-trainers"],
+    picks: ["teal-camp-shirt", "breton-top", "olive-shorts"],
     reason:
       "Stripes and olive keep it easy; the camp shirt goes on over the top when the evening cools.",
   },
   {
     id: "cosy-sunday",
     label: "A cosy Sunday",
-    picks: ["rust-overshirt", "grey-hoodie", "indigo-jeans", "white-trainers"],
+    picks: ["rust-overshirt", "grey-hoodie", "indigo-jeans"],
     reason: "Soft grey under rust cord: warm enough for a walk, relaxed enough for the sofa.",
   },
 ];

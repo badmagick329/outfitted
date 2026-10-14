@@ -153,10 +153,10 @@ function jacketTarget(phase: Phase): TargetAndTransition {
 }
 
 const details = [
-  { label: "Category", value: "Outerwear" },
-  { label: "Colour", value: "Berry red", swatch: "bg-berry" },
+  { label: "Category", value: jacket.category },
+  { label: "Colour", value: jacket.colour, swatch: "bg-berry" },
   { label: "Material", value: "Cotton canvas" },
-  { label: "Season", value: "Autumn" },
+  { label: "Style", value: jacket.tags.join(", ") },
 ];
 
 const prompt = "A relaxed Saturday in town";
@@ -222,8 +222,8 @@ export function PhotoToOutfitLoop() {
       : at > phaseIndex("ask")
         ? prompt.length
         : 0;
-  // The jacket is the sample wardrobe's newest piece, so the count lands on the full wardrobe.
-  const pieceCount = at >= phaseIndex("filed") ? demoWardrobe.length : demoWardrobe.length - 1;
+  // The jacket is the sample wardrobe's newest garment, so the count lands on the full wardrobe.
+  const garmentCount = at >= phaseIndex("filed") ? demoWardrobe.length : demoWardrobe.length - 1;
   const reading = phase === "read";
   const filing = phase === "file" || phase === "filed";
   const deskOpen = phase === "ask" || phase === "outfit";
@@ -254,17 +254,17 @@ export function PhotoToOutfitLoop() {
             <span className="relative inline-flex overflow-hidden">
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
-                  key={pieceCount}
+                  key={garmentCount}
                   initial={{ y: "100%", opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: "-100%", opacity: 0 }}
                   transition={{ duration: reducedMotion ? 0 : 0.3 }}
                 >
-                  {pieceCount}
+                  {garmentCount}
                 </motion.span>
               </AnimatePresence>
             </span>
-            pieces
+            garments
           </span>
         </motion.div>
 
@@ -489,8 +489,8 @@ export function PhotoToOutfitLoop() {
                       : { opacity: 0, y: 4, transition: { duration: 0 } },
                   )}
                 >
-                  <p className={`${monoLabel} text-teal`}>Outerwear</p>
-                  <p className={`mt-[0.4em] ${titleText}`}>Berry chore jacket</p>
+                  <p className={`${monoLabel} text-teal`}>{jacket.category}</p>
+                  <p className={`mt-[0.4em] ${titleText}`}>{jacket.name}</p>
                 </motion.div>
               </div>
             </motion.div>
