@@ -28,8 +28,7 @@ import {
  * and seasons have their own fields, so they never appear as tags).
  */
 
-export const demoTags = ["Cosy", "Minimal", "Preppy", "Retro", "Workwear"] as const;
-export type DemoTag = (typeof demoTags)[number];
+type DemoTag = "Cosy" | "Minimal" | "Preppy" | "Retro" | "Workwear";
 
 type DemoCategory = (typeof detailedCategoryOptions)[number][0];
 

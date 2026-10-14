@@ -206,8 +206,8 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
                 Check before you buy.
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/65">
-                Your wardrobe comes with you. Standing in a shop, a couple of filters tell you
-                whether you already own something like it.
+                In a shop, filter your wardrobe by category. The counts show whether you already own
+                something like it or whether it would fill a gap.
               </p>
             </div>
           </BlurFade>

@@ -11,47 +11,115 @@ import {
 } from "motion/react";
 import { Check } from "lucide-react";
 import { useReducedMotionPreference } from "@/components/demo-playback";
-import { demoTags, demoWardrobe, type DemoGarment } from "@/components/demo-wardrobe";
-import { quickCategoryGroupOptions } from "@/features/wardrobe/domain/category-groups";
+import { demoWardrobe, type DemoGarment } from "@/components/demo-wardrobe";
+import {
+  quickCategoryGroupOptions,
+  type CategoryGroup,
+} from "@/features/wardrobe/domain/category-groups";
+import { wardrobeFacets } from "@/features/wardrobe/domain/filters";
 
 /*
- * Scroll-driven: a tall track pins the phone while the page scrolls, and each quarter of the
- * track advances the story one step. Steps change discretely and animate on their own clock, so
- * a fast or slow scroll never leaves the phone half-drawn. The phone only uses the wardrobe's
- * real filters (quick sections, then style tags); the app has no text search.
+ * Scroll-driven: a tall track pins the phone while the page scrolls, and each step owns an equal
+ * slice of the track. Steps change discretely and animate on their own clock, so a fast or slow
+ * scroll never leaves the phone half-drawn. The scene runs the shopping check twice, once per
+ * outcome: a yellow knit the member already owns (Tops, then the Sweater category, whose count
+ * says how many) and a navy blazer that fills a gap (Outerwear, whose Category facets have no
+ * Blazer). It uses only the wardrobe's real filters, laid out like `wardrobe-grid.tsx`; the app
+ * has no text search.
  *
  * Reduced motion drops the pinning in CSS, so layout never waits on hydration, and shows the
- * final step with every caption listed.
+ * final step (the gap) with every caption listed.
  */
 
+// The real panel's facets: only values the wardrobe holds, counted across the whole wardrobe.
+const facets = wardrobeFacets(
+  demoWardrobe.map((garment) => ({ category: garment.category, styleTags: [...garment.tags] })),
+);
+const SWEATER = "Sweater";
+const DUPLICATE_ID = "citrus-knit";
+
 const tops = demoWardrobe.filter((garment) => garment.section === "tops");
-const cosyTops = tops.filter((garment) => garment.tags.some((tag) => tag === "Cosy"));
-const FIND_ID = "citrus-knit";
+const sweaters = tops.filter((garment) => garment.category === SWEATER);
+const outerwear = demoWardrobe.filter((garment) => garment.section === "outerwear");
 
-// Facet counts span the whole wardrobe, as in the real filter panel.
-const styleFacets = [...demoTags]
-  .sort((a, b) => a.localeCompare(b))
-  .map((tag) => ({
-    tag,
-    count: demoWardrobe.filter((garment) => garment.tags.some((entry) => entry === tag)).length,
-  }));
+// "2 coats, 1 jacket and 1 overshirt", from the outerwear the sample member owns.
+const outerwearSummary = (() => {
+  const counts = new Map<string, number>();
+  for (const { category } of outerwear) counts.set(category, (counts.get(category) ?? 0) + 1);
+  const parts = [...counts]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, count]) => `${count} ${category.toLowerCase()}${count === 1 ? "" : "s"}`);
+  return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+})();
 
-const steps = [
+type Step = {
+  title: string;
+  body: string;
+  shop: ShopItem;
+  section: CategoryGroup | null;
+  panelOpen: boolean;
+  category: string | null;
+  outcome: "owned" | "gap" | null;
+};
+
+const knit = { name: "Chunky knit, yellow", swatch: "bg-citrus", stamp: "You own one" } as const;
+const blazer = { name: "Blazer, navy", swatch: "bg-[#27324d]", stamp: "Fills a gap" } as const;
+type ShopItem = typeof knit | typeof blazer;
+
+const steps: Step[] = [
   {
-    title: "Spot it in a shop",
-    body: `A yellow knit catches your eye. Your phone already holds all ${demoWardrobe.length} garments.`,
+    title: "Spot a yellow knit",
+    body: `A chunky knit catches your eye. Your phone holds all ${demoWardrobe.length} garments you own.`,
+    shop: knit,
+    section: null,
+    panelOpen: false,
+    category: null,
+    outcome: null,
   },
   {
     title: "Tap Tops",
     body: `The wardrobe narrows to your ${tops.length} tops.`,
+    shop: knit,
+    section: "tops",
+    panelOpen: false,
+    category: null,
+    outcome: null,
   },
   {
-    title: "Add the Cosy style",
-    body: `Style tags narrow it again: ${cosyTops.length} cosy tops.`,
+    title: "Tick Sweater",
+    body: `Filters count every category. Sweater says ${sweaters.length}, and ticking it shows them.`,
+    shop: knit,
+    section: "tops",
+    panelOpen: true,
+    category: SWEATER,
+    outcome: null,
   },
   {
     title: "It's already yours",
     body: "The citrus knit is hanging at home. This one can stay on the rail.",
+    shop: knit,
+    section: "tops",
+    panelOpen: true,
+    category: SWEATER,
+    outcome: "owned",
+  },
+  {
+    title: "Next, a navy blazer",
+    body: `Tap Outerwear: you own ${outerwearSummary}.`,
+    shop: blazer,
+    section: "outerwear",
+    panelOpen: false,
+    category: null,
+    outcome: null,
+  },
+  {
+    title: "No blazer at home",
+    body: "Category lists only what you own, and Blazer isn't there. This one fills a gap.",
+    shop: blazer,
+    section: "outerwear",
+    panelOpen: true,
+    category: null,
+    outcome: "gap",
   },
 ];
 const LAST_STEP = steps.length - 1;
@@ -59,10 +127,14 @@ const LAST_STEP = steps.length - 1;
 const spring = { type: "spring", bounce: 0.2, duration: 0.55 } as const;
 const tiny = "text-[length:max(9px,3.4cqw)]";
 const chip = `rounded-full border px-[2.6cqw] py-[1.4cqw] font-bold leading-none ${tiny}`;
+const facetChip = `inline-flex shrink-0 items-center gap-[1.2cqw] rounded-full border px-[2cqw] py-[1.2cqw] leading-none ${tiny}`;
 
-function shownGarments(step: number): readonly DemoGarment[] {
-  if (step === 0) return demoWardrobe;
-  return step === 1 ? tops : cosyTops;
+function shownGarments({ section, category }: Step): readonly DemoGarment[] {
+  return demoWardrobe.filter(
+    (garment) =>
+      (section === null || garment.section === section) &&
+      (category === null || garment.category === category),
+  );
 }
 
 export function WardrobeAnywhereScene() {
@@ -74,22 +146,23 @@ export function WardrobeAnywhereScene() {
     setScrolledStep(Math.min(LAST_STEP, Math.max(0, Math.floor(progress * steps.length)))),
   );
   const step = reducedMotion ? LAST_STEP : scrolledStep;
-  const found = step === LAST_STEP;
-  const garments = shownGarments(step);
+  const current = steps[step];
+  const garments = shownGarments(current);
 
   return (
     <MotionConfig reducedMotion="user" transition={spring}>
-      <div ref={track} className="relative h-[320svh] motion-reduce:h-auto">
+      {/* About 55svh of scroll per step: the track's travel is its height minus one screen. */}
+      <div ref={track} className="relative h-[430svh] motion-reduce:h-auto">
         <div className="sticky top-0 flex h-svh items-center motion-reduce:static motion-reduce:h-auto motion-reduce:py-12">
           <div className="mx-auto grid w-full max-w-7xl items-center gap-5 px-5 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 lg:px-10">
-            <ol className="grid lg:gap-3">
+            <ol className="grid lg:gap-2">
               {steps.map((item, index) => {
                 const active = index === step;
                 return (
                   <li
                     key={item.title}
                     aria-current={active ? "step" : undefined}
-                    className={`flex gap-4 rounded-2xl border-2 p-3 transition duration-300 lg:p-4 motion-reduce:opacity-100 ${active ? "border-ink bg-canvas shadow-[4px_4px_0_var(--color-ink)]" : "border-transparent opacity-45 max-lg:motion-safe:pointer-events-none max-lg:motion-safe:opacity-0"} max-lg:motion-safe:[grid-area:1/1]`}
+                    className={`flex gap-4 rounded-2xl border-2 p-3 transition duration-300 motion-reduce:opacity-100 ${active ? "border-ink bg-canvas shadow-[4px_4px_0_var(--color-ink)]" : "border-transparent opacity-45 max-lg:motion-safe:pointer-events-none max-lg:motion-safe:opacity-0"} max-lg:motion-safe:[grid-area:1/1]`}
                   >
                     <span
                       className={`grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink font-mono text-xs font-bold ${active ? "bg-berry text-canvas" : "bg-canvas"}`}
@@ -108,10 +181,10 @@ export function WardrobeAnywhereScene() {
             </ol>
 
             <div className="relative mx-auto">
-              <ShopTag found={found} />
+              <ShopTag item={current.shop} stamped={current.outcome !== null} />
               <div
                 role="img"
-                aria-label={`Phone showing the sample wardrobe at step ${step + 1}: ${steps[step].title}.`}
+                aria-label={`Phone showing the sample wardrobe at step ${step + 1}: ${current.title}.`}
                 className="@container relative aspect-[9/19] h-[min(600px,calc(100svh-12rem))] motion-reduce:h-[min(600px,80svh)] lg:h-[min(640px,calc(100svh-7rem))]"
               >
                 <div className="size-full rounded-[13cqw] border-2 border-ink bg-ink p-[2.4cqw] shadow-[10px_10px_0_var(--color-citrus)]">
@@ -134,7 +207,7 @@ export function WardrobeAnywhereScene() {
                       <div className="mt-[4cqw] flex gap-[1.6cqw] overflow-hidden">
                         {[{ value: null, label: "All" }, ...quickCategoryGroupOptions].map(
                           (option) => {
-                            const on = option.value === (step === 0 ? null : "tops");
+                            const on = option.value === current.section;
                             return (
                               <span
                                 key={option.label}
@@ -148,37 +221,53 @@ export function WardrobeAnywhereScene() {
                       </div>
                       <div className="mt-[2.6cqw] border-t border-line pt-[2.6cqw]">
                         <span className={`inline-block border-teal/30 bg-mist text-teal ${chip}`}>
-                          Filters{step >= 2 ? " (1)" : ""}
+                          Filters{current.category ? " (1)" : ""}
                         </span>
                       </div>
                       <motion.div
                         className="overflow-hidden"
                         initial={false}
                         animate={
-                          step >= 2 ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }
+                          current.panelOpen
+                            ? { height: "auto", opacity: 1 }
+                            : { height: 0, opacity: 0 }
                         }
                       >
-                        <div className="mt-[2.6cqw] rounded-[4cqw] border border-line bg-mist/50 p-[3cqw]">
-                          <strong className={`block ${tiny}`}>Style</strong>
-                          <div className="mt-[2cqw] flex gap-[1.6cqw] overflow-hidden">
-                            {styleFacets.map(({ tag, count }) => {
-                              const on = tag === "Cosy";
-                              return (
-                                <span
-                                  key={tag}
-                                  className={`inline-flex shrink-0 items-center gap-[1.2cqw] font-normal ${chip} ${on ? "border-teal bg-canvas text-ink" : "border-line bg-canvas text-ink/65"}`}
-                                >
-                                  <span
-                                    className={`grid size-[3.4cqw] place-items-center rounded-[0.8cqw] border ${on ? "border-teal bg-teal text-canvas" : "border-ink/40"}`}
-                                  >
-                                    {on && <Check className="size-[2.6cqw]" strokeWidth={4} />}
-                                  </span>
-                                  {tag}
-                                  <span className="text-ink/50">{count}</span>
-                                </span>
-                              );
-                            })}
+                        <div className="relative mt-[2.6cqw] rounded-[4cqw] border border-line bg-mist/50 p-[3cqw]">
+                          <strong className={`block ${tiny}`}>Category</strong>
+                          <div className="mt-[1.6cqw] flex flex-wrap gap-[1.4cqw]">
+                            {facets.categories.map((facet) => (
+                              <FacetChip
+                                key={facet.value}
+                                label={facet.label}
+                                count={facet.count}
+                                on={facet.label === current.category}
+                              />
+                            ))}
                           </div>
+                          <strong className={`mt-[2.4cqw] block ${tiny}`}>Style</strong>
+                          <div className="mt-[1.6cqw] flex gap-[1.4cqw] overflow-hidden">
+                            {facets.tags.map((facet) => (
+                              <FacetChip
+                                key={facet.value}
+                                label={facet.label}
+                                count={facet.count}
+                                on={false}
+                              />
+                            ))}
+                          </div>
+                          <motion.span
+                            className={`absolute right-[3cqw] top-[2cqw] rounded-full border-2 border-ink bg-teal px-[2.6cqw] py-[1.6cqw] font-mono font-bold uppercase leading-none tracking-[0.08em] text-canvas ${tiny}`}
+                            initial={false}
+                            animate={
+                              current.outcome === "gap"
+                                ? { opacity: 1, scale: 1, rotate: 4 }
+                                : { opacity: 0, scale: 0.6, rotate: 0 }
+                            }
+                            transition={{ ...spring, delay: current.outcome === "gap" ? 0.35 : 0 }}
+                          >
+                            No blazer
+                          </motion.span>
                         </div>
                       </motion.div>
                     </div>
@@ -186,15 +275,16 @@ export function WardrobeAnywhereScene() {
                     <ul className="relative mt-[3.5cqw] grid grid-cols-2 content-start gap-[2.6cqw] px-[5cqw]">
                       <AnimatePresence mode="popLayout" initial={false}>
                         {garments.map((garment) => {
-                          const isFind = garment.id === FIND_ID;
+                          const isDuplicate = garment.id === DUPLICATE_ID;
+                          const owned = current.outcome === "owned";
                           return (
                             <motion.li
                               key={garment.id}
                               layout
                               initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: found && !isFind ? 0.35 : 1, scale: 1 }}
+                              animate={{ opacity: owned && !isDuplicate ? 0.35 : 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.9 }}
-                              className={`relative overflow-hidden rounded-[4cqw] border bg-canvas transition-[border-color,box-shadow] duration-300 ${found && isFind ? "z-10 border-berry shadow-[0_0_0_2px_var(--color-berry)]" : "border-line"}`}
+                              className={`relative overflow-hidden rounded-[4cqw] border bg-canvas transition-[border-color,box-shadow] duration-300 ${owned && isDuplicate ? "z-10 border-berry shadow-[0_0_0_2px_var(--color-berry)]" : "border-line"}`}
                             >
                               <Image
                                 src={garment.image}
@@ -202,16 +292,16 @@ export function WardrobeAnywhereScene() {
                                 className={`aspect-[4/5] w-full object-cover ${garment.tint}`}
                                 sizes="140px"
                               />
-                              {isFind && (
+                              {isDuplicate && (
                                 <motion.span
                                   className={`absolute left-[3cqw] top-[38cqw] rounded-full border-2 border-ink bg-citrus px-[2.6cqw] py-[1.6cqw] font-mono font-bold uppercase leading-none tracking-[0.08em] text-ink ${tiny}`}
                                   initial={false}
                                   animate={
-                                    found
+                                    owned
                                       ? { opacity: 1, scale: 1, rotate: -6 }
                                       : { opacity: 0, scale: 0.6, rotate: 0 }
                                   }
-                                  transition={{ ...spring, delay: found ? 0.35 : 0 }}
+                                  transition={{ ...spring, delay: owned ? 0.35 : 0 }}
                                 >
                                   Already yours
                                 </motion.span>
@@ -240,31 +330,57 @@ export function WardrobeAnywhereScene() {
   );
 }
 
-// A swing tag from the shop, built from page elements; it gets stamped once the twin turns up.
-function ShopTag({ found }: { found: boolean }) {
+function FacetChip({ label, count, on }: { label: string; count: number; on: boolean }) {
+  return (
+    <span
+      className={`${facetChip} transition-colors duration-300 ${on ? "border-teal bg-canvas text-ink" : "border-line bg-canvas text-ink/65"}`}
+    >
+      <span
+        className={`grid size-[3.4cqw] place-items-center rounded-[0.8cqw] border transition-colors duration-300 ${on ? "border-teal bg-teal text-canvas" : "border-ink/40"}`}
+      >
+        {on && <Check className="size-[2.6cqw]" strokeWidth={4} />}
+      </span>
+      {label}
+      <span className="text-ink/50">{count}</span>
+    </span>
+  );
+}
+
+// A swing tag from the shop, built from page elements. It swaps when the second garment comes up,
+// and its stamp names the outcome once the phone has answered.
+function ShopTag({ item, stamped }: { item: ShopItem; stamped: boolean }) {
+  const gap = item === blazer;
   return (
     <motion.div
       className="absolute -right-5 bottom-[5%] z-10 w-28 sm:-right-24 sm:bottom-[14%] sm:w-40 lg:-left-36 lg:right-auto lg:bottom-[22%]"
       initial={false}
-      animate={{ rotate: found ? -4 : 8 }}
+      animate={{ rotate: stamped ? -4 : 8 }}
       aria-hidden="true"
     >
-      <div className="relative rounded-[1.1rem] border-2 border-ink bg-canvas p-3 pt-6 shadow-[5px_5px_0_var(--color-ink)]">
-        <span className="absolute left-1/2 top-2 size-2.5 -translate-x-1/2 rounded-full border-2 border-ink bg-peach" />
-        <div className="h-12 rounded-lg border-2 border-ink bg-citrus" />
-        <p className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink/50">
-          New in
-        </p>
-        <p className="text-sm font-bold leading-tight">Chunky knit, yellow</p>
-        <motion.span
-          className="absolute inset-x-1 top-1/3 grid -rotate-12 place-items-center whitespace-nowrap rounded-lg border-[3px] border-berry bg-canvas/85 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] sm:text-[11px] sm:tracking-[0.12em] text-berry"
-          initial={false}
-          animate={found ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.6 }}
-          transition={{ type: "spring", bounce: 0.35, duration: 0.45, delay: found ? 0.6 : 0 }}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={item.name}
+          className="relative rounded-[1.1rem] border-2 border-ink bg-canvas p-3 pt-6 shadow-[5px_5px_0_var(--color-ink)]"
+          initial={{ opacity: 0, y: -24, rotate: 10 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          exit={{ opacity: 0, y: 24, rotate: -10 }}
         >
-          You own one
-        </motion.span>
-      </div>
+          <span className="absolute left-1/2 top-2 size-2.5 -translate-x-1/2 rounded-full border-2 border-ink bg-peach" />
+          <div className={`h-12 rounded-lg border-2 border-ink ${item.swatch}`} />
+          <p className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink/50">
+            New in
+          </p>
+          <p className="text-sm font-bold leading-tight">{item.name}</p>
+          <motion.span
+            className={`absolute inset-x-1 top-1/3 grid -rotate-12 place-items-center whitespace-nowrap rounded-lg border-[3px] bg-canvas/85 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] sm:text-[11px] sm:tracking-[0.12em] ${gap ? "border-teal text-teal" : "border-berry text-berry"}`}
+            initial={false}
+            animate={stamped ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.6 }}
+            transition={{ type: "spring", bounce: 0.35, duration: 0.45, delay: stamped ? 0.6 : 0 }}
+          >
+            {item.stamp}
+          </motion.span>
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 }
