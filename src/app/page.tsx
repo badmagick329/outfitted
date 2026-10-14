@@ -5,9 +5,9 @@ import { getCurrentAccess } from "@/features/access/server";
 import { getAccessMode } from "@/features/access/settings";
 
 export const metadata: Metadata = {
-  title: "Outfitted - Open your wardrobe from anywhere",
+  title: "Outfitted - Check what you own before you buy",
   description:
-    "Photograph, organise and browse your clothes in a private visual catalogue, with outfit help when you want it.",
+    "Keep a photo catalogue of your clothes on your phone. In a shop, filter it to see what you already own and what's missing.",
 };
 
 export default async function Home() {

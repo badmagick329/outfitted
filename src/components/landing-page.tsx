@@ -15,7 +15,7 @@ import { BatchImportDemo } from "@/components/batch-import-demo";
 import { BrandWordmark } from "@/components/brand";
 import { demoGarment, demoWardrobe } from "@/components/demo-wardrobe";
 import { OutfitOccasionDemo } from "@/components/outfit-occasion-demo";
-import { PhotoToOutfitLoop } from "@/components/photo-to-outfit-loop";
+import { PhotoToShopCheckLoop } from "@/components/photo-to-shop-check-loop";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Marquee } from "@/components/ui/marquee";
 import { WardrobeAnywhereScene } from "@/components/wardrobe-anywhere-scene";
@@ -157,14 +157,14 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
       <section className="mx-auto grid min-h-[calc(100vh-79px)] w-full max-w-7xl items-center gap-10 px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-8 lg:px-10 lg:pb-20 lg:pt-4">
         <div className="relative z-10 max-w-2xl">
           <BlurFade delay={0.04}>
-            <h1 className="max-w-3xl text-[clamp(3.6rem,9vw,7.4rem)] font-bold leading-[0.84] tracking-[-0.085em]">
-              Open your wardrobe from <span className="text-teal">anywhere.</span>
+            <h1 className="max-w-3xl text-[clamp(3.6rem,9vw,6.2rem)] font-bold leading-[0.84] tracking-[-0.085em]">
+              Check what you own <span className="text-teal">before you buy.</span>
             </h1>
           </BlurFade>
           <BlurFade delay={0.12}>
             <p className="mt-8 max-w-xl text-lg leading-8 text-ink/68 sm:text-xl">
-              Photograph, organise and browse your clothes in a private visual catalogue, with
-              outfit help when you want it.
+              Keep a photo catalogue of your clothes on your phone. In a shop, filter it to see what
+              you already own and what&apos;s missing.
             </p>
           </BlurFade>
           <BlurFade delay={0.2}>
@@ -184,7 +184,7 @@ export function LandingPage({ accessMode }: { accessMode: AccessMode }) {
             </div>
           </BlurFade>
         </div>
-        <PhotoToOutfitLoop />
+        <PhotoToShopCheckLoop />
       </section>
 
       <section className="border-y-2 border-ink bg-mist py-5" aria-label="Example garments">
