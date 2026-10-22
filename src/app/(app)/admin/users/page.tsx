@@ -9,16 +9,36 @@ import {
 import { getAccessMode } from "@/features/access/settings";
 import { aiAccessService } from "@/features/ai-access/server";
 import { listFeatureGrantsForUsers } from "@/features/feature-grants/server";
+import {
+  getAiBudgets,
+  getDefaultAiBudget,
+  listAiBudgetAuditEvents,
+} from "@/features/ai-budget/server";
+import {
+  directoryQuerySchema,
+  queryMemberDirectory,
+} from "@/features/access/application/member-directory";
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireAdminUser();
-  const [users, auditEvents, accessMode, pendingAiRequests] = await Promise.all([
-    listManagedUsers(),
-    listAccessAuditEvents(),
-    getAccessMode(),
-    aiAccessService.listPending(),
-  ]);
-  const featureGrants = await listFeatureGrantsForUsers(users.map((user) => user.id));
+  const raw = await searchParams;
+  const parsed = directoryQuerySchema.safeParse(raw);
+  const query = parsed.success ? parsed.data : directoryQuerySchema.parse({});
+  const [users, auditEvents, accessMode, pendingAiRequests, defaultLimit, budgetAuditEvents] =
+    await Promise.all([
+      listManagedUsers(),
+      listAccessAuditEvents(),
+      getAccessMode(),
+      aiAccessService.listPending(),
+      getDefaultAiBudget(),
+      listAiBudgetAuditEvents(),
+    ]);
+  const budgets = await getAiBudgets(users.map((user) => user.id));
+  const budgetsByUser = new Map(budgets.map((budget) => [budget.userId, budget]));
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
@@ -34,17 +54,17 @@ export default async function AdminUsersPage() {
     hourCycle: "h23",
     timeZone: "UTC",
   });
-  const statusOrder = { pending: 0, active: 1, disabled: 2 } as const;
   const requestedUserIds = new Set(pendingAiRequests.map((request) => request.userId));
-  const sortedUsers = [...users].sort((left, right) => {
-    const leftRequested = requestedUserIds.has(left.id) ? 0 : 1;
-    const rightRequested = requestedUserIds.has(right.id) ? 0 : 1;
-    return (
-      leftRequested - rightRequested ||
-      statusOrder[left.accessStatus] - statusOrder[right.accessStatus] ||
-      left.createdAt.getTime() - right.createdAt.getTime()
-    );
-  });
+  const directory = queryMemberDirectory(
+    users.map((user) => {
+      const budget = budgetsByUser.get(user.id);
+      if (!budget) throw new Error("Budget snapshot missing for member");
+      return { ...user, budget, hasPendingAiRequest: requestedUserIds.has(user.id) };
+    }),
+    query,
+  );
+  const featureGrants = await listFeatureGrantsForUsers(directory.rows.map((user) => user.id));
+  const memberLabels = new Map(users.map((user) => [user.id, user.name ?? user.email]));
 
   return (
     <>
@@ -55,8 +75,31 @@ export default async function AdminUsersPage() {
       />
       <AdminSectionNavigation active="users" />
       <AdminUserManager
+        budgetAuditEvents={budgetAuditEvents.map((event) => ({
+          ...event,
+          createdLabel: dateTimeFormatter.format(event.createdAt),
+          actorLabel: memberLabels.get(event.actorUserId) ?? event.actorUserId,
+          targetLabel: event.targetUserId
+            ? (memberLabels.get(event.targetUserId) ?? event.targetUserId)
+            : "Shared default",
+        }))}
+        defaultLimit={defaultLimit}
+        directory={{
+          query: { ...query, page: directory.page },
+          total: directory.total,
+          pageCount: directory.pageCount,
+          matchedIds: directory.matchedIds,
+        }}
+        summary={{
+          total: users.length,
+          pending: users.filter((user) => user.accessStatus === "pending").length,
+          active: users.filter((user) => user.effectiveAccessStatus === "active").length,
+          admittedByPublicMode: users.filter(
+            (user) => user.accessStatus === "pending" && user.effectiveAccessStatus === "active",
+          ).length,
+        }}
         accessMode={accessMode}
-        users={sortedUsers.map(({ createdAt, ...user }) => ({
+        users={directory.rows.map(({ createdAt, ...user }) => ({
           ...user,
           joinedLabel: dateFormatter.format(createdAt),
           hasPendingAiRequest: requestedUserIds.has(user.id),

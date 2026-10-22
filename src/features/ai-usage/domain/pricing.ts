@@ -24,7 +24,9 @@ export function estimateCostMicrousd(usage: AiTokenUsage) {
   const inputMultiplier = isLongContext ? longContextInputMultiplier : 1;
   const outputMultiplier = isLongContext ? longContextOutputMultiplier : 1;
 
-  return Math.round(
+  // Round liabilities upward so many fractional-microdollar calls cannot
+  // cumulatively exceed a hard budget through accounting precision loss.
+  return Math.ceil(
     (uncachedInputTokens * ratesMicrousdPerToken.input +
       usage.cachedInputTokens * ratesMicrousdPerToken.cachedInput +
       usage.cacheWriteInputTokens * ratesMicrousdPerToken.cacheWriteInput) *

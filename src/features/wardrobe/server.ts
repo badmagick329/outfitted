@@ -1,6 +1,5 @@
 import { after } from "next/server";
 import { ai } from "@/lib/ai";
-import { aiUsageRecorder } from "@/features/ai-usage/server";
 import { notificationService } from "@/features/notifications/server";
 import { enqueueAnalysis } from "@/lib/jobs";
 import { storage } from "@/lib/storage";
@@ -14,5 +13,4 @@ export const wardrobeService = new WardrobeService({
   notifications: notificationService,
   schedule: (task) => after(task),
   ai,
-  usageRecorder: aiUsageRecorder,
 });

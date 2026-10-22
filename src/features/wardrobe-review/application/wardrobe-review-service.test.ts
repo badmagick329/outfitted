@@ -3,6 +3,7 @@ import { WardrobeReviewService } from "./wardrobe-review-service";
 import type { WardrobeReviewSourceItem } from "../domain/contracts";
 import type { WardrobeReviewRecord, WardrobeReviewRepository } from "../domain/repository";
 import { wardrobeReviewSnapshotSignature } from "../domain/snapshot";
+import { aiBudgetExhausted } from "@/shared/application-error";
 
 const item = {
   id: "7c1bcc30-61e7-4b82-bb99-bd73f33d926d",
@@ -68,6 +69,16 @@ function dependencies({ items = [item], profile = null as null | Record<string, 
 }
 
 describe("WardrobeReviewService", () => {
+  it("ends a budget-blocked worker review without retries or a stuck processing state", async () => {
+    const deps = dependencies();
+    const blocked = aiBudgetExhausted(new Date("2026-11-01T00:00:00Z"));
+    deps.ai.review.mockRejectedValueOnce(blocked);
+    await expect(
+      new WardrobeReviewService(deps).process(review.id, async () => true),
+    ).resolves.toBeUndefined();
+    expect(deps.repository.fail).toHaveBeenCalledWith(review.id, blocked.message);
+    expect(deps.repository.complete).not.toHaveBeenCalled();
+  });
   it("does not create a review for an empty wardrobe", async () => {
     const deps = dependencies({ items: [] });
     const service = new WardrobeReviewService(deps);
@@ -137,7 +148,7 @@ describe("WardrobeReviewService", () => {
 
     await service.process(review.id, async () => true);
 
-    expect(deps.ai.review).toHaveBeenCalledWith([item], profile);
+    expect(deps.ai.review).toHaveBeenCalledWith({ userId: "user-1" }, [item], profile);
     expect(deps.repository.complete).toHaveBeenCalledWith(
       review.id,
       expect.objectContaining({

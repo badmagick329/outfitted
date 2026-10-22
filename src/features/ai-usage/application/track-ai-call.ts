@@ -1,53 +1,96 @@
-import type { AiCallResult, AiUsageOperation, AiUsageRecorder } from "../domain/contracts";
+import type { AiBudgetRepository } from "@/features/ai-budget/domain/repository";
+import { aiBudgetPeriod } from "@/features/ai-budget/domain/period";
+import { aiBudgetExhausted } from "@/shared/application-error";
+import type { AiCallResult, AiUsageOperation } from "../domain/contracts";
 
-type TrackAiCallInput<T> = {
-  recorder?: AiUsageRecorder;
-  userId: string;
-  operation: AiUsageOperation;
-  model: string;
-  call: () => Promise<AiCallResult<T>>;
-};
-
-async function recordSafely(
-  recorder: AiUsageRecorder | undefined,
-  input: Parameters<AiUsageRecorder["record"]>[0],
-) {
-  if (!recorder) return;
-  try {
-    await recorder.record(input);
-  } catch (error) {
-    console.error("Unable to record AI usage", error);
+/** A provider response was received and billed even though its content was unusable. */
+export class BilledAiCallError extends Error {
+  constructor(
+    public readonly result: Omit<AiCallResult<never>, "data">,
+    options: ErrorOptions,
+  ) {
+    super("The AI response could not be used. Please try again.", options);
   }
 }
 
+type TrackAiCallInput<T> = {
+  budget: AiBudgetRepository;
+  userId: string;
+  operation: AiUsageOperation;
+  model: string;
+  reservationMicrousd: number;
+  call: (reservationId: string) => Promise<AiCallResult<T>>;
+  onAdmitted?: () => Promise<void>;
+  now?: () => Date;
+};
+
 export async function trackAiCall<T>({
-  recorder,
+  budget,
   userId,
   operation,
   model,
+  reservationMicrousd,
   call,
-}: TrackAiCallInput<T>) {
-  const startedAt = Date.now();
+  onAdmitted,
+  now = () => new Date(),
+}: TrackAiCallInput<T>): Promise<AiCallResult<T>> {
+  const startedAt = now();
+  const admission = await budget.reserve({
+    userId,
+    operation,
+    model,
+    amountMicrousd: reservationMicrousd,
+    period: aiBudgetPeriod(startedAt),
+    now: startedAt,
+  });
+  if (!admission.allowed)
+    throw aiBudgetExhausted(admission.budget.period.endsAt, admission.budget.reservedMicrousd);
+  const reservationId = admission.reservation.id;
+  // Persist the crash boundary before sending. A failed write must never send;
+  // recovery conservatively retains a marker whose commit outcome was unknown.
+  await budget.markDispatched(reservationId, now());
   try {
-    const result = await call();
-    await recordSafely(recorder, {
+    await onAdmitted?.();
+  } catch (error) {
+    await budget.release({ reservationId, definitelyUnused: true, now: now() });
+    throw error;
+  }
+  let result: AiCallResult<T>;
+  try {
+    result = await call(reservationId);
+  } catch (error) {
+    if (error instanceof BilledAiCallError) {
+      await budget.settle({
+        reservationId,
+        usageEvent: {
+          userId,
+          operation,
+          ...error.result,
+          status: "failed",
+          latencyMs: now().getTime() - startedAt.getTime(),
+        },
+        now: now(),
+      });
+    } else {
+      // A timeout, network error or cancellation does not establish zero cost.
+      await budget.markUncertain(reservationId, now());
+    }
+    throw error;
+  }
+  // A failed settlement leaves the dispatched hold intact. Enforcement never
+  // substitutes best-effort analytics for the durable accounting transaction.
+  await budget.settle({
+    reservationId,
+    usageEvent: {
       userId,
       operation,
       model: result.model,
-      status: "success",
       providerRequestId: result.providerRequestId,
       usage: result.usage,
-      latencyMs: Date.now() - startedAt,
-    });
-    return result.data;
-  } catch (error) {
-    await recordSafely(recorder, {
-      userId,
-      operation,
-      model,
-      status: "failed",
-      latencyMs: Date.now() - startedAt,
-    });
-    throw error;
-  }
+      status: "success",
+      latencyMs: now().getTime() - startedAt.getTime(),
+    },
+    now: now(),
+  });
+  return result;
 }

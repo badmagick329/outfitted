@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -39,6 +40,22 @@ export const users = pgTable("users", {
   featureTier: varchar("feature_tier", { length: 16 }).notNull().default("inventory"),
   ...timestamps,
 });
+
+export const aiUsageReportSelections = pgTable(
+  "ai_usage_report_selections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    memberIds: text("member_ids").array().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check("ai_usage_report_selections_nonempty", sql`cardinality(${table.memberIds}) > 0`),
+    index("ai_usage_report_selections_actor_idx").on(table.actorUserId),
+  ],
+);
 
 export const accessAuditEvents = pgTable("access_audit_events", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -86,6 +103,7 @@ export const userFeatureGrants = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     featureKey: varchar("feature_key", { length: 64 }).notNull(),
     remainingUses: integer("remaining_uses").notNull().default(0),
+    generation: uuid("generation").defaultRandom().notNull(),
     grantedByUserId: text("granted_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -94,10 +112,125 @@ export const userFeatureGrants = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.featureKey] })],
 );
 
+export const featureRuns = pgTable(
+  "feature_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    featureKey: varchar("feature_key", { length: 64 }).notNull(),
+    pendingItemIds: uuid("pending_item_ids").array().notNull(),
+    grantGeneration: uuid("grant_generation").notNull(),
+    admittedAt: timestamp("admitted_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("feature_runs_unfinished_idx")
+      .on(table.createdAt)
+      .where(sql`${table.completedAt} is null`),
+  ],
+);
+
+export const aiBudgetSettings = pgTable(
+  "ai_budget_settings",
+  {
+    id: text("id").primaryKey().default("singleton"),
+    defaultLimitMicrousd: integer("default_limit_microusd").notNull().default(5_000_000),
+    updatedByUserId: text("updated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    check("ai_budget_settings_singleton", sql`${table.id} = 'singleton'`),
+    check("ai_budget_settings_nonnegative", sql`${table.defaultLimitMicrousd} >= 0`),
+  ],
+);
+
+export const aiBudgetOverrides = pgTable(
+  "ai_budget_overrides",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    limitMicrousd: integer("limit_microusd").notNull(),
+    updatedByUserId: text("updated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps,
+  },
+  (table) => [check("ai_budget_overrides_nonnegative", sql`${table.limitMicrousd} >= 0`)],
+);
+
+export const aiBudgetAuditEvents = pgTable(
+  "ai_budget_audit_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    scope: varchar("scope", { length: 16 }).notNull(),
+    targetUserId: text("target_user_id").references(() => users.id, { onDelete: "restrict" }),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    previousLimitMicrousd: integer("previous_limit_microusd"),
+    nextLimitMicrousd: integer("next_limit_microusd"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("ai_budget_audit_events_created_at_idx").on(table.createdAt),
+    check(
+      "ai_budget_audit_events_scope",
+      sql`(${table.scope} = 'default' and ${table.targetUserId} is null and ${table.previousLimitMicrousd} is not null and ${table.nextLimitMicrousd} is not null) or (${table.scope} = 'member' and ${table.targetUserId} is not null)`,
+    ),
+    check(
+      "ai_budget_audit_events_nonnegative",
+      sql`(${table.previousLimitMicrousd} is null or ${table.previousLimitMicrousd} >= 0) and (${table.nextLimitMicrousd} is null or ${table.nextLimitMicrousd} >= 0)`,
+    ),
+  ],
+);
+
+export const aiBudgetReservations = pgTable(
+  "ai_budget_reservations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    operation: varchar("operation", { length: 32 }).notNull(),
+    model: varchar("model", { length: 64 }).notNull(),
+    periodKey: varchar("period_key", { length: 7 }).notNull(),
+    periodStartsAt: timestamp("period_starts_at", { withTimezone: true }).notNull(),
+    periodEndsAt: timestamp("period_ends_at", { withTimezone: true }).notNull(),
+    amountMicrousd: integer("amount_microusd").notNull(),
+    actualCostMicrousd: integer("actual_cost_microusd"),
+    status: varchar("status", { length: 16 }).notNull().default("reserved"),
+    ...timestamps,
+  },
+  (table) => [
+    index("ai_budget_reservations_user_period_idx").on(table.userId, table.periodKey),
+    index("ai_budget_reservations_status_updated_idx").on(table.status, table.updatedAt),
+    check("ai_budget_reservations_amount", sql`${table.amountMicrousd} > 0`),
+    check("ai_budget_reservations_actual_cost", sql`${table.actualCostMicrousd} >= 0`),
+    check("ai_budget_reservations_period", sql`${table.periodEndsAt} > ${table.periodStartsAt}`),
+    check(
+      "ai_budget_reservations_status",
+      sql`${table.status} in ('reserved', 'dispatched', 'uncertain', 'settled', 'released')`,
+    ),
+    check(
+      "ai_budget_reservations_settled_cost",
+      sql`(${table.status} = 'settled') = (${table.actualCostMicrousd} is not null)`,
+    ),
+  ],
+);
+
 export const aiUsageEvents = pgTable(
   "ai_usage_events",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    budgetReservationId: uuid("budget_reservation_id")
+      .unique()
+      .references(() => aiBudgetReservations.id, { onDelete: "restrict" }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

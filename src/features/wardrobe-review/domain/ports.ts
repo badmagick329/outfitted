@@ -1,4 +1,5 @@
-import type { AiCallResult, AiUsageRecorder } from "@/features/ai-usage/domain/contracts";
+import type { AiCallResult } from "@/features/ai-usage/domain/contracts";
+import type { AiCallContext } from "@/lib/ai";
 import type { StyleProfile } from "@/features/style-profile/domain/contracts";
 import type {
   WardrobeReviewReport,
@@ -8,6 +9,7 @@ import type {
 export type WardrobeReviewAi = {
   readonly model?: string;
   review(
+    actor: AiCallContext,
     wardrobe: WardrobeReviewSourceItem[],
     styleProfile?: StyleProfile | null,
   ): Promise<AiCallResult<WardrobeReviewReport>>;
@@ -24,5 +26,3 @@ export type WardrobeReviewStyleProfileReader = {
 export type WardrobeReviewJobQueue = {
   enqueue(reviewId: string): Promise<unknown>;
 };
-
-export type WardrobeReviewUsageRecorder = AiUsageRecorder;

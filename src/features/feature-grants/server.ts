@@ -1,6 +1,7 @@
-import { and, eq, gt, lt, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { userFeatureGrants } from "@/lib/db/schema";
+import { DrizzleFeatureRunRepository } from "./infrastructure/drizzle-feature-run-repository";
 import { conflict, forbidden, notFound } from "@/shared/application-error";
 import { getUserAccessById } from "@/features/access/server";
 import {
@@ -67,6 +68,7 @@ export async function grantFeatureUse(actorUserId: string, userId: string, featu
       target: [userFeatureGrants.userId, userFeatureGrants.featureKey],
       set: {
         remainingUses: definition.grantedUses,
+        generation: crypto.randomUUID(),
         grantedByUserId: actorUserId,
         updatedAt: new Date(),
       },
@@ -94,36 +96,14 @@ export async function hasAvailableFeatureGrant(userId: string, featureKey: strin
   return (grant?.remainingUses ?? 0) > 0;
 }
 
-export async function claimFeatureUse(userId: string, featureKey: string) {
-  const definition = feature(featureKey);
-  const claimed = await db
-    .update(userFeatureGrants)
-    .set({ remainingUses: sql`${userFeatureGrants.remainingUses} - 1`, updatedAt: new Date() })
-    .where(
-      and(
-        eq(userFeatureGrants.userId, userId),
-        eq(userFeatureGrants.featureKey, definition.key),
-        gt(userFeatureGrants.remainingUses, 0),
-      ),
-    )
-    .returning({ userId: userFeatureGrants.userId });
-  return claimed.length === 1;
-}
-
-export async function restoreFeatureUse(userId: string, featureKey: string) {
-  const definition = feature(featureKey);
-  await db
-    .update(userFeatureGrants)
-    .set({ remainingUses: definition.grantedUses, updatedAt: new Date() })
-    .where(
-      and(
-        eq(userFeatureGrants.userId, userId),
-        eq(userFeatureGrants.featureKey, definition.key),
-        lt(userFeatureGrants.remainingUses, definition.grantedUses),
-      ),
-    );
-}
-
 export function parseFeatureKey(value: unknown): FeatureKey {
   return featureKeySchema.parse(value);
 }
+
+const runs = new DrizzleFeatureRunRepository();
+export const beginFeatureRun = (userId: string, featureKey: FeatureKey, itemIds: string[]) =>
+  runs.begin(userId, featureKey, itemIds);
+export const admitFeatureRun = (runId: string) => runs.admit(runId);
+export const completeFeatureRunItem = (runId: string, itemId: string) =>
+  runs.completeItem(runId, itemId);
+export const recoverFeatureRuns = (before: Date) => runs.recover(before);

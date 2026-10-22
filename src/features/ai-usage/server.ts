@@ -2,34 +2,15 @@ import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { aiUsageEvents, outfitSuggestions, users, wardrobeItems } from "@/lib/db/schema";
 import type { OutfitSelectionDiagnosticsV1 } from "@/features/outfits/application/outfit-candidate-selection";
-import type { AiUsageRecorder, RecordAiUsageInput } from "./domain/contracts";
-import { AI_PRICING_VERSION, estimateCostMicrousd } from "./domain/pricing";
-
-export const aiUsageRecorder: AiUsageRecorder = {
-  async record(input: RecordAiUsageInput) {
-    const usage = input.usage ?? {
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      cacheWriteInputTokens: 0,
-      outputTokens: 0,
-    };
-    await db.insert(aiUsageEvents).values({
-      userId: input.userId,
-      operation: input.operation,
-      model: input.model,
-      status: input.status,
-      providerRequestId: input.providerRequestId,
-      ...usage,
-      estimatedCostMicrousd: estimateCostMicrousd(usage),
-      latencyMs: input.latencyMs,
-      pricingVersion: AI_PRICING_VERSION,
-    });
-  },
-};
+import type { AiUsageSelection, ReportMember } from "./application/report-selection";
 
 export type AiUsageRange = 7 | 30 | 90;
 
-export async function getAiUsageDashboard(days: AiUsageRange, userId?: string) {
+export async function getAiUsageDashboard(
+  days: AiUsageRange,
+  memberIds: AiUsageSelection,
+  members: ReportMember[],
+) {
   const today = new Date();
   const start = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - days + 1),
@@ -52,10 +33,36 @@ export async function getAiUsageDashboard(days: AiUsageRange, userId?: string) {
     .where(
       and(
         gte(aiUsageEvents.createdAt, start),
-        userId ? eq(aiUsageEvents.userId, userId) : undefined,
+        memberIds === null ? undefined : inArray(aiUsageEvents.userId, [...memberIds]),
       ),
     )
     .orderBy(asc(aiUsageEvents.createdAt));
+
+  return aggregateAiUsageDashboard(days, start, rows, memberIds, members);
+}
+
+type UsageRow = {
+  userId: string;
+  userName: string | null;
+  userEmail: string;
+  operation: string;
+  status: string;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostMicrousd: number;
+  latencyMs: number;
+  createdAt: Date;
+};
+
+export function aggregateAiUsageDashboard(
+  days: AiUsageRange,
+  start: Date,
+  sourceRows: UsageRow[],
+  memberIds: AiUsageSelection,
+  members: ReportMember[],
+) {
+  const selectedIds = memberIds === null ? null : new Set(memberIds);
+  const rows = sourceRows.filter((row) => selectedIds === null || selectedIds.has(row.userId));
 
   const daily = new Map<
     string,
@@ -93,6 +100,23 @@ export async function getAiUsageDashboard(days: AiUsageRange, userId?: string) {
     }
   >();
 
+  const memberDaily = new Map<string, typeof daily>();
+  for (const member of members) {
+    if (selectedIds !== null && !selectedIds.has(member.id)) continue;
+    perUser.set(member.id, {
+      userId: member.id,
+      name: member.name,
+      email: member.email,
+      costMicrousd: 0,
+      requestCount: 0,
+      garmentAnalysisCount: 0,
+      outfitSuggestionCount: 0,
+      wardrobeReviewCount: 0,
+      failedCount: 0,
+    });
+    memberDaily.set(member.id, new Map([...daily].map(([key, day]) => [key, { ...day }])));
+  }
+
   let totalCostMicrousd = 0;
   let successfulCount = 0;
   let totalLatencyMs = 0;
@@ -111,6 +135,11 @@ export async function getAiUsageDashboard(days: AiUsageRange, userId?: string) {
     if (day) {
       day.costMicrousd += row.estimatedCostMicrousd;
       day.requestCount += 1;
+    }
+    const memberDay = memberDaily.get(row.userId)?.get(dateKey);
+    if (memberDay) {
+      memberDay.costMicrousd += row.estimatedCostMicrousd;
+      memberDay.requestCount += 1;
     }
 
     const user = perUser.get(row.userId) ?? {
@@ -139,12 +168,18 @@ export async function getAiUsageDashboard(days: AiUsageRange, userId?: string) {
       totalCostMicrousd,
       requestCount: rows.length,
       averageCostMicrousd: rows.length ? Math.round(totalCostMicrousd / rows.length) : 0,
-      successRate: rows.length ? Math.round((successfulCount / rows.length) * 100) : 100,
+      successRate: rows.length ? Math.round((successfulCount / rows.length) * 100) : null,
       averageLatencyMs: rows.length ? Math.round(totalLatencyMs / rows.length) : 0,
       totalInputTokens,
       totalOutputTokens,
     },
     daily: [...daily.values()],
+    memberDaily: [...perUser.values()].map((member) => ({
+      userId: member.userId,
+      name: member.name,
+      email: member.email,
+      data: [...(memberDaily.get(member.userId)?.values() ?? [])],
+    })),
     users: [...perUser.values()].sort(
       (left, right) =>
         right.costMicrousd - left.costMicrousd || right.requestCount - left.requestCount,
@@ -287,7 +322,10 @@ export function aggregateOutfitRecommendationDiagnostics(
   };
 }
 
-export async function getOutfitRecommendationDashboard(days: AiUsageRange, userId?: string) {
+export async function getOutfitRecommendationDashboard(
+  days: AiUsageRange,
+  memberIds: AiUsageSelection,
+) {
   const today = new Date();
   const start = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - days + 1),
@@ -303,7 +341,7 @@ export async function getOutfitRecommendationDashboard(days: AiUsageRange, userI
     .where(
       and(
         gte(outfitSuggestions.createdAt, start),
-        userId ? eq(outfitSuggestions.userId, userId) : undefined,
+        memberIds === null ? undefined : inArray(outfitSuggestions.userId, [...memberIds]),
       ),
     )
     .orderBy(asc(outfitSuggestions.createdAt));

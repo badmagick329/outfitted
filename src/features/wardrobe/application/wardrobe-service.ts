@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
 import {
   ApplicationError,
   conflict,
   infrastructureFailure,
+  isAiBudgetExhausted,
   notFound,
 } from "@/shared/application-error";
 import type { UpdateWardrobeItemInput } from "../domain/contracts";
@@ -12,7 +12,6 @@ import type {
   BackgroundScheduler,
   NotificationQueue,
   WardrobeAi,
-  WardrobeAiUsageRecorder,
   WardrobeStorage,
 } from "../domain/ports";
 import type { WardrobeItem, WardrobeRepository } from "../domain/repository";
@@ -28,7 +27,6 @@ type Dependencies = {
   notifications: NotificationQueue;
   schedule: BackgroundScheduler;
   ai: WardrobeAi;
-  usageRecorder?: WardrobeAiUsageRecorder;
 };
 
 export class WardrobeService {
@@ -297,8 +295,16 @@ export class WardrobeService {
     };
   }
 
-  async queueBulkReanalysis(ownerId: string) {
-    const active = await this.dependencies.repository.listActive(ownerId);
+  async queueBulkReanalysis(
+    ownerId: string,
+    run?: { id: string; itemIds: string[]; completeItem: (itemId: string) => Promise<void> },
+  ) {
+    const current = await this.dependencies.repository.listActive(ownerId);
+    const active = run ? current.filter((item) => run.itemIds.includes(item.id)) : current;
+    if (run)
+      for (const itemId of run.itemIds) {
+        if (!active.some((item) => item.id === itemId)) await run.completeItem(itemId);
+      }
     let queued = 0;
     let skipped = 0;
     let failed = 0;
@@ -306,14 +312,20 @@ export class WardrobeService {
       active.map(async (item) => {
         if (item.analysisStatus === "pending" || item.analysisStatus === "processing") {
           skipped += 1;
+          await run?.completeItem(item.id);
           return;
         }
         if (!(await this.dependencies.repository.reserveAnalysis(ownerId, item.id))) {
           skipped += 1;
+          await run?.completeItem(item.id);
           return;
         }
         try {
-          await this.dependencies.jobs.enqueueAnalysis(item.id, { forceOverwrite: true });
+          const queuedId = await this.dependencies.jobs.enqueueAnalysis(item.id, {
+            forceOverwrite: true,
+            ...(run ? { featureRunId: run.id } : {}),
+          });
+          if (queuedId === null) throw conflict("Analysis was already queued.");
           queued += 1;
         } catch {
           failed += 1;
@@ -321,6 +333,7 @@ export class WardrobeService {
             item.id,
             "Unable to queue re-analysis. Please try again.",
           );
+          await run?.completeItem(item.id);
         }
       }),
     );
@@ -341,6 +354,7 @@ export class WardrobeService {
     itemId: string,
     canUseAi: (ownerId: string) => Promise<boolean>,
     forceOverwrite = false,
+    onAdmitted?: () => Promise<void>,
   ) {
     const item = await this.dependencies.repository.findById(itemId);
     if (!item || (!forceOverwrite && item.analysisStatus === "complete")) return;
@@ -358,14 +372,11 @@ export class WardrobeService {
         ),
       );
       const active = await this.dependencies.repository.listActive(item.userId);
-      const result = await trackAiCall({
-        recorder: this.dependencies.usageRecorder,
-        userId: item.userId,
-        operation: "garment_analysis",
-        model: this.dependencies.ai.model ?? "unknown",
-        call: () =>
-          this.dependencies.ai.analyze(images, { existingStyleTags: styleTagVocabulary(active) }),
-      });
+      const { data: result } = await this.dependencies.ai.analyze(
+        { userId: item.userId, onAdmitted },
+        images,
+        { existingStyleTags: styleTagVocabulary(active) },
+      );
       const normalized = normalizeGarmentMetadata(result, {
         styleTags: active.flatMap((activeItem) => activeItem.styleTags),
         colors: active.flatMap((activeItem) =>
@@ -387,10 +398,14 @@ export class WardrobeService {
         forceOverwrite,
       );
     } catch (error) {
+      console.error("Garment analysis failed", error);
       await this.dependencies.repository.failAnalysis(
         itemId,
-        error instanceof Error ? error.message : "Analysis failed",
+        error instanceof ApplicationError
+          ? error.message
+          : "We couldn’t read this garment’s details. You can try again.",
       );
+      if (isAiBudgetExhausted(error)) return;
       throw error;
     }
   }

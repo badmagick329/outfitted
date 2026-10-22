@@ -6,9 +6,23 @@ export class ApplicationError extends Error {
     public readonly status: number,
     message: string,
     public readonly fieldErrors?: Record<string, string[]>,
+    public readonly resetAt?: string,
   ) {
     super(message);
   }
+}
+
+export const aiBudgetExhausted = (resetAt: Date, reservedMicrousd = 0) =>
+  new ApplicationError(
+    "AI_BUDGET_EXHAUSTED",
+    429,
+    `Your monthly AI budget cannot cover this request.${reservedMicrousd > 0 ? " Some of your budget is held for AI requests still running or awaiting confirmation." : ""} It resets at 00:00 Europe/London on ${resetAt.toLocaleDateString("en-GB", { timeZone: "Europe/London", day: "numeric", month: "long", year: "numeric" })}. You can still browse and edit your wardrobe.`,
+    undefined,
+    resetAt.toISOString(),
+  );
+
+export function isAiBudgetExhausted(error: unknown): error is ApplicationError {
+  return error instanceof ApplicationError && error.code === "AI_BUDGET_EXHAUSTED";
 }
 
 export const notFound = (message = "Not found") => new ApplicationError("NOT_FOUND", 404, message);

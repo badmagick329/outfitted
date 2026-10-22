@@ -11,10 +11,13 @@ import {
 import { requireAdminUser } from "@/features/access/server";
 import { listManagedUsers } from "@/features/access/server";
 import { categoryGroupOptions } from "@/features/wardrobe/domain/category-groups";
+import { aiUsageHref, savedAiUsageHref } from "@/features/ai-usage/application/report-selection";
+import { resolveAiUsageReportSelection } from "@/features/ai-usage/report-selection-server";
 
 const ranges: AiUsageRange[] = [7, 30, 90];
 
-function asRange(value: string | undefined): AiUsageRange {
+function asRange(value: string | string[] | undefined): AiUsageRange {
+  if (Array.isArray(value)) return 30;
   const parsed = Number(value);
   return ranges.includes(parsed as AiUsageRange) ? (parsed as AiUsageRange) : 30;
 }
@@ -43,18 +46,39 @@ function roleLabel(role: string) {
 export default async function AiUsagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; user?: string }>;
+  searchParams: Promise<{
+    range?: string | string[];
+    memberId?: string | string[];
+    selection?: string | string[];
+    user?: string | string[];
+  }>;
 }) {
   await requireAdminUser();
   const params = await searchParams;
   const range = asRange(params.range);
   const managedUsers = await listManagedUsers();
-  const selectedUser = managedUsers.find((user) => user.id === params.user) ?? null;
+  const selection = await resolveAiUsageReportSelection(
+    params,
+    new Set(managedUsers.map((member) => member.id)),
+  );
+  const reportHref = (days: number) =>
+    selection.selectionId
+      ? savedAiUsageHref(days, selection.selectionId)
+      : aiUsageHref(days, selection.memberIds);
   const [dashboard, outfitDashboard] = await Promise.all([
-    getAiUsageDashboard(range, selectedUser?.id),
-    getOutfitRecommendationDashboard(range, selectedUser?.id),
+    getAiUsageDashboard(range, selection.memberIds, managedUsers),
+    getOutfitRecommendationDashboard(range, selection.memberIds),
   ]);
-  const selectedLabel = selectedUser ? (selectedUser.name ?? selectedUser.email) : "all members";
+  const selectedMember =
+    selection.memberIds?.length === 1
+      ? managedUsers.find((member) => member.id === selection.memberIds![0])
+      : undefined;
+  const selectedLabel =
+    selection.memberIds === null
+      ? "all members"
+      : selectedMember
+        ? (selectedMember.name ?? selectedMember.email)
+        : `${selection.memberIds.length} selected members`;
 
   return (
     <>
@@ -66,6 +90,17 @@ export default async function AiUsagePage({
       <AdminSectionNavigation active="ai-usage" />
 
       <div className="mt-9 space-y-8">
+        {selection.invalid && (
+          <p role="alert" className="rounded-xl border border-berry bg-peach/40 p-4 text-sm">
+            This member selection is invalid or contains an unavailable member. Choose members again
+            to view their usage.
+          </p>
+        )}
+        {selection.memberIds?.length === 0 && !selection.invalid && (
+          <p role="status" className="rounded-xl border border-line bg-mist p-4 text-sm">
+            No members selected. Choose members or select All members to see usage.
+          </p>
+        )}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold tracking-[-0.04em]">Last {range} days</h2>
@@ -74,7 +109,7 @@ export default async function AiUsagePage({
           <div className="flex flex-wrap items-center gap-3">
             <AiUsageMemberSelect
               range={range}
-              selectedUserId={selectedUser?.id ?? null}
+              selectedMemberIds={selection.memberIds}
               members={managedUsers}
             />
             <nav
@@ -84,7 +119,7 @@ export default async function AiUsagePage({
               {ranges.map((days) => (
                 <Link
                   key={days}
-                  href={`/admin/ai-usage?range=${days}${selectedUser ? `&user=${encodeURIComponent(selectedUser.id)}` : ""}`}
+                  href={reportHref(days)}
                   aria-current={range === days ? "page" : undefined}
                   className={`rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-berry ${
                     range === days ? "bg-berry text-canvas" : "text-ink/55 hover:text-ink"
@@ -116,7 +151,8 @@ export default async function AiUsagePage({
             },
             {
               label: "Success rate",
-              value: `${dashboard.summary.successRate}%`,
+              value:
+                dashboard.summary.successRate === null ? "—" : `${dashboard.summary.successRate}%`,
               tone: "bg-canvas",
             },
           ].map((summary) => (
@@ -144,7 +180,16 @@ export default async function AiUsagePage({
               Average response {formatLatency(dashboard.summary.averageLatencyMs)}
             </span>
           </div>
-          <AiUsageChart data={dashboard.daily} />
+          {!dashboard.summary.requestCount && (
+            <p className="mb-4 text-sm text-ink/60">
+              No AI requests for this selection in the last {range} days.
+            </p>
+          )}
+          <AiUsageChart
+            key={reportHref(range)}
+            data={dashboard.daily}
+            members={dashboard.memberDaily}
+          />
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-4 text-xs text-ink/55">
             <span>{dashboard.summary.totalInputTokens.toLocaleString("en-GB")} input tokens</span>
             <span>{dashboard.summary.totalOutputTokens.toLocaleString("en-GB")} output tokens</span>

@@ -24,7 +24,3 @@ export type RecordAiUsageInput = {
   usage?: AiTokenUsage;
   latencyMs: number;
 };
-
-export type AiUsageRecorder = {
-  record(input: RecordAiUsageInput): Promise<void>;
-};

@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { estimateCostMicrousd } from "./pricing";
 
 describe("estimateCostMicrousd", () => {
+  it("rounds fractional microdollar liabilities up to preserve a hard cap", () => {
+    expect(
+      estimateCostMicrousd({
+        inputTokens: 1,
+        cachedInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        outputTokens: 0,
+      }),
+    ).toBe(1);
+  });
   it("prices uncached, cached, cache-write and output tokens separately", () => {
     expect(
       estimateCostMicrousd({

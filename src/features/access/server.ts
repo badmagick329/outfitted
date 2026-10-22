@@ -4,7 +4,13 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { accessAuditEvents, aiAccessRequests, users } from "@/lib/db/schema";
 import { forbidden, notFound, unauthorized } from "@/shared/application-error";
-import type { AccessStatus, FeatureTier, UpdateUserAccessInput } from "./contracts";
+import {
+  bulkUserAccessSchema,
+  type AccessStatus,
+  type FeatureTier,
+  type UpdateUserAccessInput,
+} from "./contracts";
+import { applyBulkAccess } from "./application/bulk-access";
 import { asAccessStatus, asFeatureTier, normalizeEmail, resolveAccountAccess } from "./policy";
 import { getAccessMode } from "./settings";
 
@@ -123,32 +129,49 @@ export async function listAccessAuditEvents() {
 export async function updateManagedUser(
   actorUserId: string,
   userId: string,
-  input: UpdateUserAccessInput,
+  input: Partial<UpdateUserAccessInput>,
 ) {
   await db.transaction(async (transaction) => {
-    const [user] = await transaction.select().from(users).where(eq(users.id, userId)).limit(1);
+    const [user] = await transaction
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update")
+      .limit(1);
     if (!user) throw notFound("User not found");
+    if (
+      adminEmails().has(normalizeEmail(user.email ?? "")) &&
+      (input.accessStatus === "disabled" ||
+        input.accessStatus === "pending" ||
+        input.featureTier === "inventory")
+    ) {
+      throw forbidden("Administrators must keep active accounts and AI access.");
+    }
     const previousAccessStatus = asAccessStatus(user.accessStatus);
     const previousFeatureTier = asFeatureTier(user.featureTier);
+    const next = {
+      accessStatus: input.accessStatus ?? previousAccessStatus,
+      featureTier: input.featureTier ?? previousFeatureTier,
+    };
     const unchanged =
-      previousAccessStatus === input.accessStatus && previousFeatureTier === input.featureTier;
+      previousAccessStatus === next.accessStatus && previousFeatureTier === next.featureTier;
     if (!unchanged) {
       await transaction
         .update(users)
-        .set({ ...input, updatedAt: new Date() })
+        .set({ ...next, updatedAt: new Date() })
         .where(and(eq(users.id, userId)));
       await transaction.insert(accessAuditEvents).values({
         userId,
         actorUserId,
         previousAccessStatus,
-        nextAccessStatus: input.accessStatus,
+        nextAccessStatus: next.accessStatus,
         previousFeatureTier,
-        nextFeatureTier: input.featureTier,
+        nextFeatureTier: next.featureTier,
       });
     }
     // A manual AI grant supersedes any outstanding request; leaving it pending would
     // misrepresent the member as still waiting for access they already hold.
-    if (input.featureTier === "ai") {
+    if (next.featureTier === "ai") {
       await transaction
         .update(aiAccessRequests)
         .set({
@@ -160,4 +183,12 @@ export async function updateManagedUser(
         .where(and(eq(aiAccessRequests.userId, userId), eq(aiAccessRequests.status, "pending")));
     }
   });
+}
+
+export async function bulkUpdateManagedUsers(raw: unknown) {
+  const admin = await requireAdminUser();
+  const input = bulkUserAccessSchema.parse(raw);
+  return applyBulkAccess(input, (userId, change) =>
+    updateManagedUser(admin.userId, userId, change),
+  );
 }

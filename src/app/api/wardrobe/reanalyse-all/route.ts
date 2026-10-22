@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAiUser } from "@/features/access/server";
-import { claimFeatureUse, restoreFeatureUse } from "@/features/feature-grants/server";
+import { beginFeatureRun, completeFeatureRunItem } from "@/features/feature-grants/server";
 import { wardrobeService } from "@/features/wardrobe/server";
-import { forbidden } from "@/shared/application-error";
 import { routeError } from "@/shared/route-response";
 
 const bulkReanalysisFeature = "bulk_wardrobe_reanalysis";
@@ -26,15 +25,24 @@ export async function POST() {
         message: "All active garments are already being analysed.",
       });
 
-    const claimed = access.isAdmin
-      ? false
-      : await claimFeatureUse(access.userId, bulkReanalysisFeature);
-    if (!access.isAdmin && !claimed)
-      throw forbidden("Your one re-analysis grant has already been used.");
-
-    const result = await wardrobeService.queueBulkReanalysis(access.userId);
-    if (claimed && result.queued === 0)
-      await restoreFeatureUse(access.userId, bulkReanalysisFeature);
+    const items = await wardrobeService.listActive(access.userId);
+    const runId = access.isAdmin
+      ? undefined
+      : await beginFeatureRun(
+          access.userId,
+          bulkReanalysisFeature,
+          items.map((item) => item.id),
+        );
+    const result = await wardrobeService.queueBulkReanalysis(
+      access.userId,
+      runId
+        ? {
+            id: runId,
+            itemIds: items.map((item) => item.id),
+            completeItem: (itemId) => completeFeatureRunItem(runId, itemId),
+          }
+        : undefined,
+    );
     return NextResponse.json({
       ...result,
       message:

@@ -35,7 +35,7 @@ vi.mock("@/lib/db/schema", () => ({
 }));
 
 import { aiAccessRequests } from "@/lib/db/schema";
-import { updateManagedUser } from "./server";
+import { bulkUpdateManagedUsers, updateManagedUser } from "./server";
 
 type Chain = {
   set: ReturnType<typeof vi.fn>;
@@ -57,7 +57,7 @@ function transactionFor(userRow: Record<string, unknown>) {
   const insertValues = vi.fn(async () => undefined);
   const transaction = {
     select: vi.fn(() => ({
-      from: () => ({ where: () => ({ limit: async () => [userRow] }) }),
+      from: () => ({ where: () => ({ for: () => ({ limit: async () => [userRow] }) }) }),
     })),
     update: vi.fn((table: unknown) => (table === aiAccessRequests ? requestUpdate : userUpdate)),
     insert: vi.fn(() => ({ values: insertValues })),
@@ -133,5 +133,53 @@ describe("updateManagedUser", () => {
     );
     expect(userUpdate.set).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  it("rejects unauthenticated bulk writes before touching persistence", async () => {
+    await expect(
+      bulkUpdateManagedUsers({ userIds: ["user-1"], featureTier: "ai" }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("protects administrator accounts from direct and bulk downgrade attempts", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
+    const { userUpdate, requestUpdate, insertValues } = transactionFor({
+      email: "Admin@Example.com",
+      accessStatus: "active",
+      featureTier: "ai",
+    });
+    try {
+      await expect(
+        updateManagedUser("admin-1", "admin-2", { accessStatus: "disabled" }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        updateManagedUser("admin-1", "admin-2", { featureTier: "inventory" }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(userUpdate.set).not.toHaveBeenCalled();
+      expect(requestUpdate.set).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps the unselected access field and records the actual change", async () => {
+    const { userUpdate, insertValues } = transactionFor({
+      accessStatus: "disabled",
+      featureTier: "inventory",
+    });
+    await updateManagedUser("admin-1", "user-1", { featureTier: "ai" });
+    expect(userUpdate.set).toHaveBeenCalledWith(
+      expect.objectContaining({ accessStatus: "disabled", featureTier: "ai" }),
+    );
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousAccessStatus: "disabled",
+        nextAccessStatus: "disabled",
+        previousFeatureTier: "inventory",
+        nextFeatureTier: "ai",
+      }),
+    );
   });
 });

@@ -1,5 +1,4 @@
-import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
-import { conflict, infrastructureFailure } from "@/shared/application-error";
+import { conflict, infrastructureFailure, isAiBudgetExhausted } from "@/shared/application-error";
 import type { StyleProfile } from "@/features/style-profile/domain/contracts";
 import type {
   WardrobeReviewEntry,
@@ -12,7 +11,6 @@ import type {
   WardrobeReviewJobQueue,
   WardrobeReviewSourceReader,
   WardrobeReviewStyleProfileReader,
-  WardrobeReviewUsageRecorder,
 } from "../domain/ports";
 import type { WardrobeReviewRecord, WardrobeReviewRepository } from "../domain/repository";
 import { referencedReviewItemIds, wardrobeReviewSnapshotSignature } from "../domain/snapshot";
@@ -23,7 +21,6 @@ type Dependencies = {
   styleProfiles: WardrobeReviewStyleProfileReader;
   jobs: WardrobeReviewJobQueue;
   ai: WardrobeReviewAi;
-  usageRecorder?: WardrobeReviewUsageRecorder;
 };
 
 function snapshot(items: WardrobeReviewSourceItem[], styleProfile: StyleProfile | null) {
@@ -154,15 +151,17 @@ export class WardrobeReviewService {
     await this.dependencies.repository.setProcessing(review.id, snapshot(items, styleProfile));
 
     try {
-      const report = await trackAiCall({
-        recorder: this.dependencies.usageRecorder,
-        userId: review.userId,
-        operation: "wardrobe_review",
-        model: this.dependencies.ai.model ?? "unknown",
-        call: () => this.dependencies.ai.review(items, styleProfile),
-      });
+      const { data: report } = await this.dependencies.ai.review(
+        { userId: review.userId },
+        items,
+        styleProfile,
+      );
       await this.dependencies.repository.complete(review.id, sanitizeReport(report, items));
     } catch (error) {
+      if (isAiBudgetExhausted(error)) {
+        await this.dependencies.repository.fail(review.id, error.message);
+        return;
+      }
       console.error("Wardrobe review failed", error);
       throw error;
     }

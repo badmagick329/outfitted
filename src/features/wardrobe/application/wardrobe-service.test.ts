@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { WardrobeService } from "./wardrobe-service";
 import type { WardrobeRepository } from "../domain/repository";
 import type { WardrobeStorage } from "../domain/ports";
+import { aiBudgetExhausted } from "@/shared/application-error";
 
 const item = {
   id: "item-1",
@@ -20,6 +21,7 @@ const item = {
   confidence: [],
   analysisStatus: "pending",
   analysisError: null,
+  excludedFromOutfitSuggestions: false,
   archivedAt: null,
   metadataEditedAt: null,
   createdAt: new Date(),
@@ -54,6 +56,68 @@ function dependencies({
 }
 
 describe("WardrobeService.create", () => {
+  it("marks a budget-blocked analysis failed and ends its worker attempt without retrying", async () => {
+    const deps = dependencies();
+    vi.mocked(deps.repository.findById).mockResolvedValueOnce(item);
+    deps.repository.setAnalysisProcessing = vi.fn().mockResolvedValue(undefined);
+    deps.repository.listPhotos = vi.fn().mockResolvedValue([]);
+    const blocked = aiBudgetExhausted(new Date("2026-11-01T00:00:00Z"));
+    deps.ai.analyze.mockRejectedValueOnce(blocked);
+    await expect(
+      new WardrobeService(deps).analyze(item.id, async () => true),
+    ).resolves.toBeUndefined();
+    expect(deps.repository.failAnalysis).toHaveBeenCalledWith(item.id, blocked.message);
+    expect(deps.ai.analyze).toHaveBeenCalledWith(
+      { userId: item.userId, onAdmitted: undefined },
+      [],
+      { existingStyleTags: [] },
+    );
+  });
+
+  it("keeps raw provider failures out of the member-visible analysis message", async () => {
+    const deps = dependencies();
+    vi.mocked(deps.repository.findById).mockResolvedValueOnce(item);
+    deps.repository.setAnalysisProcessing = vi.fn().mockResolvedValue(undefined);
+    deps.repository.listPhotos = vi.fn().mockResolvedValue([]);
+    const failure = new Error("Provider credentials and internal request details");
+    deps.ai.analyze.mockRejectedValueOnce(failure);
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await expect(new WardrobeService(deps).analyze(item.id, async () => true)).rejects.toBe(
+        failure,
+      );
+      expect(deps.repository.failAnalysis).toHaveBeenCalledWith(
+        item.id,
+        "We couldn’t read this garment’s details. You can try again.",
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("finishes grant-run items skipped or deleted before queuing and attaches the run to admitted jobs", async () => {
+    const deps = dependencies();
+    vi.mocked(deps.repository.listActive).mockResolvedValueOnce([
+      { ...item, id: "pending", analysisStatus: "pending" },
+      { ...item, id: "ready", analysisStatus: "complete" },
+      { ...item, id: "added-later", analysisStatus: "complete" },
+    ]);
+    const completeItem = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      new WardrobeService(deps).queueBulkReanalysis("user-1", {
+        id: "run-1",
+        itemIds: ["pending", "ready", "deleted"],
+        completeItem,
+      }),
+    ).resolves.toMatchObject({ queued: 1, skipped: 1 });
+    expect(completeItem).toHaveBeenCalledWith("deleted");
+    expect(completeItem).toHaveBeenCalledWith("pending");
+    expect(deps.jobs.enqueueAnalysis).toHaveBeenCalledWith("ready", {
+      forceOverwrite: true,
+      featureRunId: "run-1",
+    });
+    expect(deps.jobs.enqueueAnalysis).toHaveBeenCalledTimes(1);
+  });
   it("removes stored images and the database record when queuing fails", async () => {
     const enqueue = vi.fn().mockRejectedValue(new Error("queue unavailable"));
     const { repository, storage, jobs, notifications, schedule, ai } = dependencies({ enqueue });
@@ -278,9 +342,13 @@ describe("WardrobeService.analyze", () => {
 
     await service.analyze("item-1", async () => true);
 
-    expect(ai.analyze).toHaveBeenCalledWith(expect.any(Array), {
-      existingStyleTags: [{ value: "Minimalist", count: 1 }],
-    });
+    expect(ai.analyze).toHaveBeenCalledWith(
+      { userId: "user-1", onAdmitted: undefined },
+      expect.any(Array),
+      {
+        existingStyleTags: [{ value: "Minimalist", count: 1 }],
+      },
+    );
     expect(repository.completeAnalysis).toHaveBeenCalledWith(
       "item-1",
       expect.objectContaining({

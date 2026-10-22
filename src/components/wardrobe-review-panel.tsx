@@ -229,7 +229,11 @@ export function WardrobeReviewPanel({ initialView }: { initialView: WardrobeRevi
           )}
           Review my wardrobe
         </Button>
-        {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </section>
     );
   }
@@ -248,7 +252,11 @@ export function WardrobeReviewPanel({ initialView }: { initialView: WardrobeRevi
             </p>
           </div>
         </div>
-        {error && <p className="mt-5 text-sm text-red-700">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-5 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </section>
     );
   }
@@ -258,13 +266,17 @@ export function WardrobeReviewPanel({ initialView }: { initialView: WardrobeRevi
       <section className="mt-9 max-w-3xl rounded-3xl border border-line bg-canvas p-7 shadow-[6px_6px_0_var(--color-peach)] sm:p-9">
         <CircleAlert size={25} className="text-red-700" aria-hidden="true" />
         <h2 className="mt-4 text-2xl font-bold tracking-[-0.04em]">The review did not finish</h2>
-        <p className="mt-2 text-sm leading-6 text-ink/60">
+        <p role="alert" className="mt-2 text-sm leading-6 text-ink/60">
           {view.review.error ?? "Please try again."}
         </p>
         <Button className="mt-6" onClick={requestReview} disabled={submitting}>
           <RefreshCw size={16} aria-hidden="true" /> Try again
         </Button>
-        {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </section>
     );
   }
@@ -335,7 +347,11 @@ export function WardrobeReviewPanel({ initialView }: { initialView: WardrobeRevi
         <Button variant="outline" onClick={requestReview} disabled={submitting}>
           <RefreshCw size={16} aria-hidden="true" /> Review again
         </Button>
-        {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       <ImageViewerDialog

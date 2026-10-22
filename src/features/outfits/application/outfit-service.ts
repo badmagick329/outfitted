@@ -1,13 +1,12 @@
 import { conflict, notFound } from "@/shared/application-error";
 import { buildOutfitRequest } from "@/lib/ai-prompts";
-import { trackAiCall } from "@/features/ai-usage/application/track-ai-call";
 import type {
   CreateOutfitSuggestionInput,
   IgnoreOutfitInput,
   SaveOutfitInput,
 } from "../domain/contracts";
 import { canonicalOutfitItemIds, outfitSignature } from "../domain/outfit-signature";
-import type { OutfitAi, OutfitAiUsageRecorder, OutfitStyleProfileReader } from "../domain/ports";
+import type { OutfitAi, OutfitStyleProfileReader } from "../domain/ports";
 import type { OutfitRepository } from "../domain/repository";
 import {
   itemsByRole,
@@ -23,7 +22,6 @@ export class OutfitService {
   constructor(
     private readonly repository: OutfitRepository,
     private readonly ai: OutfitAi,
-    private readonly usageRecorder?: OutfitAiUsageRecorder,
     private readonly styleProfiles?: OutfitStyleProfileReader,
   ) {}
 
@@ -83,20 +81,16 @@ export class OutfitService {
         lastSuggestedPosition: recentUsageByItemId.get(id)?.lastSuggestedPosition ?? null,
       }),
     );
-    const suggest = (retry: boolean) =>
-      trackAiCall({
-        recorder: this.usageRecorder,
-        userId: ownerId,
-        operation: "outfit_suggestion",
-        model: this.ai.model ?? "unknown",
-        call: () =>
-          this.ai.suggest(
-            retry ? buildOutfitRequest(input.prompt, selected, true, previousItemIds) : request,
-            wardrobe,
-            styleProfile,
-            excludedOutfitItemIds,
-          ),
-      });
+    const suggest = async (retry: boolean) =>
+      (
+        await this.ai.suggest(
+          { userId: ownerId },
+          retry ? buildOutfitRequest(input.prompt, selected, true, previousItemIds) : request,
+          wardrobe,
+          styleProfile,
+          excludedOutfitItemIds,
+        )
+      ).data;
     const allowedIds = new Set(items.map((item) => item.id));
     const excludedSignatures = new Set(excludedOutfitItemIds.map(outfitSignature));
     let attemptCount = 1;

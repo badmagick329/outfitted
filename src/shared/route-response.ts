@@ -11,6 +11,7 @@ export function routeError(error: unknown) {
           code: resolved.code,
           message: resolved.message,
           fieldErrors: resolved.fieldErrors,
+          resetAt: resolved.resetAt,
         },
       },
       { status: resolved.status },

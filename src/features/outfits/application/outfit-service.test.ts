@@ -161,6 +161,7 @@ describe("OutfitService.create", () => {
 
     await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
     expect(ai.suggest).toHaveBeenCalledWith(
+      { userId: "user-1" },
       expect.any(String),
       [expect.objectContaining({ id: "item-1" })],
       null,
@@ -192,6 +193,7 @@ describe("OutfitService.create", () => {
     await service.create("user-1", { prompt: "A dinner", selectedItemId: "item-1" });
 
     expect(ai.suggest).toHaveBeenCalledWith(
+      { userId: "user-1" },
       expect.stringContaining("must include wardrobe item item-1, named Teal shirt"),
       expect.any(Array),
       null,
@@ -222,12 +224,13 @@ describe("OutfitService.create", () => {
       occasionNotes: "",
     };
     const styleProfiles = { find: vi.fn().mockResolvedValue(styleProfile) };
-    const service = new OutfitService(repository, ai, undefined, styleProfiles);
+    const service = new OutfitService(repository, ai, styleProfiles);
 
     await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
 
     expect(styleProfiles.find).toHaveBeenCalledWith("user-1");
     expect(ai.suggest).toHaveBeenCalledWith(
+      { userId: "user-1" },
       expect.any(String),
       expect.any(Array),
       styleProfile,
@@ -257,6 +260,7 @@ describe("OutfitService.create", () => {
     await service.create("user-1", { prompt: "A dinner", selectedItemId: undefined });
 
     expect(ai.suggest).toHaveBeenCalledWith(
+      { userId: "user-1" },
       expect.any(String),
       [
         expect.objectContaining({
@@ -269,7 +273,7 @@ describe("OutfitService.create", () => {
       null,
       excludedItemIds,
     );
-    const wardrobe = ai.suggest.mock.calls[0]?.[1];
+    const wardrobe = ai.suggest.mock.calls[0]?.[2];
     expect(wardrobe?.[0]).not.toHaveProperty("confidence");
     expect(wardrobe?.[0]).not.toHaveProperty("analysisStatus");
   });
@@ -304,6 +308,7 @@ describe("OutfitService.create", () => {
 
     expect(repository.listRecentSuggestionItemIds).toHaveBeenCalledWith("user-1", 20);
     expect(ai.suggest).toHaveBeenCalledWith(
+      { userId: "user-1" },
       expect.any(String),
       expect.arrayContaining([
         expect.objectContaining({
@@ -359,7 +364,7 @@ describe("OutfitService.create", () => {
       service.create("user-1", { prompt: "A dinner", selectedItemId: undefined }),
     ).resolves.toMatchObject({ referencedItemIds: ["item-2"] });
     expect(ai.suggest).toHaveBeenCalledTimes(2);
-    expect(ai.suggest.mock.calls[1]?.[0]).toContain("previous candidate batch did not contain");
+    expect(ai.suggest.mock.calls[1]?.[1]).toContain("previous candidate batch did not contain");
   });
 
   it("returns a conflict after two unusable candidate batches", async () => {

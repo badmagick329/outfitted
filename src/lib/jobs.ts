@@ -15,10 +15,13 @@ export async function getBoss() {
   }
   return boss;
 }
-export async function enqueueAnalysis(itemId: string, options: { forceOverwrite?: boolean } = {}) {
+export async function enqueueAnalysis(
+  itemId: string,
+  options: { forceOverwrite?: boolean; featureRunId?: string } = {},
+) {
   return (await getBoss()).send(
     ANALYZE_ITEM_JOB,
-    { itemId, forceOverwrite: Boolean(options.forceOverwrite) },
+    { itemId, forceOverwrite: Boolean(options.forceOverwrite), featureRunId: options.featureRunId },
     { retryLimit: 3, retryDelay: 30, singletonKey: itemId },
   );
 }

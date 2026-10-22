@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { AccessModeControl } from "@/components/access-mode-control";
 import { Button } from "@/components/ui/button";
 import type { AccessMode } from "@/features/access/contracts";
+import type { AiBudgetSnapshot } from "@/features/ai-budget/domain/contracts";
+import { BudgetEditor, usd } from "@/components/admin-budget-controls";
+import { MemberDirectory, type MemberDirectoryState } from "@/components/member-directory";
 
 type AccessStatus = "pending" | "active" | "disabled";
 type FeatureTier = "inventory" | "ai";
 
-type ManagedUser = {
+export type ManagedUser = {
   id: string;
   name: string | null;
   email: string;
@@ -20,6 +23,7 @@ type ManagedUser = {
   featureTier: FeatureTier;
   isAdmin: boolean;
   hasPendingAiRequest: boolean;
+  budget: AiBudgetSnapshot;
   featureGrants: Array<{
     key: string;
     label: string;
@@ -65,7 +69,13 @@ function AccessBadge({ status }: { status: AccessStatus }) {
   );
 }
 
-function ManagedUserRow({ user, accessMode }: { user: ManagedUser; accessMode: AccessMode }) {
+export function ManagedUserSettings({
+  user,
+  accessMode,
+}: {
+  user: ManagedUser;
+  accessMode: AccessMode;
+}) {
   const router = useRouter();
   const [accessStatus, setAccessStatus] = useState(user.accessStatus);
   const [featureTier, setFeatureTier] = useState(user.featureTier);
@@ -133,142 +143,157 @@ function ManagedUserRow({ user, accessMode }: { user: ManagedUser; accessMode: A
   }
 
   return (
-    <form
-      className={`p-5 sm:px-7 ${
-        accessStatus === "pending" ? (accessMode === "public" ? "bg-mist/40" : "bg-citrus/10") : ""
-      }`}
-      onSubmit={save}
-    >
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] sm:items-end">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <strong className="break-words">{user.name ?? "Unnamed member"}</strong>
-            <AccessBadge status={accessStatus} />
-          </div>
-          <span className="block break-all text-sm text-ink/60">{user.email}</span>
-          <span className="mt-1 block font-mono text-[10px] uppercase tracking-wide text-ink/45">
-            Joined {user.joinedLabel}
-            {user.isAdmin ? " · administrator" : ""}
-          </span>
-          {accessMode === "public" && accessStatus === "pending" && (
-            <span className="mt-2 inline-flex rounded-full border border-teal/25 bg-mist px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-teal-dark">
-              Can enter now · public mode
-            </span>
-          )}
-          {user.hasPendingAiRequest && (
-            <span className="mt-2 inline-flex rounded-full border border-citrus/80 bg-citrus/35 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-ink">
-              AI access requested
-            </span>
-          )}
-        </div>
-        <label className="block text-xs font-bold text-ink/70">
-          Access
-          <select
-            value={accessStatus}
-            onChange={(event) => {
-              setAccessStatus(event.target.value as AccessStatus);
-              setNotice("");
-            }}
-            className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
-          >
-            <option value="pending">Pending</option>
-            <option value="active">Active</option>
-            <option value="disabled">Disabled</option>
-          </select>
-        </label>
-        <label className="block text-xs font-bold text-ink/70">
-          Features
-          <select
-            value={featureTier}
-            onChange={(event) => {
-              setFeatureTier(event.target.value as FeatureTier);
-              setNotice("");
-            }}
-            className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
-          >
-            <option value="inventory">Inventory</option>
-            <option value="ai">Outfit Desk</option>
-          </select>
-        </label>
-        <Button type="submit" size="sm" disabled={saving || !dirty}>
-          {saving && <LoaderCircle className="animate-spin" size={14} aria-hidden="true" />}
-          {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-      {(error || notice) && (
-        <p
-          role={error ? "alert" : "status"}
-          className={`rounded-xl px-3 py-2 text-sm sm:col-start-2 sm:col-end-5 ${error ? "bg-red-50 text-red-700" : "border border-teal/15 bg-mist text-teal-dark"}`}
-        >
-          {error || notice}
-        </p>
-      )}
-      <section
-        className="mt-5 border-t border-line pt-4"
-        aria-label={`Alpha features for ${user.name ?? user.email}`}
+    <div>
+      <form
+        className={`p-5 sm:px-7 ${
+          accessStatus === "pending"
+            ? accessMode === "public"
+              ? "bg-mist/40"
+              : "bg-citrus/10"
+            : ""
+        }`}
+        onSubmit={save}
       >
-        <h3 className="text-sm font-bold">Alpha features</h3>
-        <div className="mt-3 space-y-3">
-          {user.featureGrants.map((feature) => {
-            const effectiveAccessStatus: AccessStatus =
-              accessMode === "public" && savedAccessStatus === "pending"
-                ? "active"
-                : savedAccessStatus;
-            const eligible = effectiveAccessStatus === "active" && savedFeatureTier === "ai";
-            const savingFeature = featureSaving === feature.key;
-            return (
-              <div
-                key={feature.key}
-                className="flex flex-col gap-3 rounded-2xl border border-line bg-canvas/65 p-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <strong className="block text-sm">{feature.label}</strong>
-                  <span className="mt-0.5 block text-xs text-ink/60">{feature.description}</span>
-                  <span className="mt-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-ink/50">
-                    {user.isAdmin
-                      ? "Always available to administrators"
-                      : feature.available
-                        ? "Available once"
-                        : "Unavailable"}
-                  </span>
-                </div>
-                {!user.isAdmin &&
-                  (feature.available ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={savingFeature}
-                      onClick={() => updateFeature(feature.key, "revoke")}
-                    >
-                      {savingFeature ? "Updating…" : "Revoke"}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={savingFeature || !eligible}
-                      title={eligible ? undefined : "Requires an active account with AI access."}
-                      onClick={() => updateFeature(feature.key, "grant")}
-                    >
-                      {savingFeature ? "Granting…" : "Grant one use"}
-                    </Button>
-                  ))}
-              </div>
-            );
-          })}
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] sm:items-end">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <strong className="break-words">{user.name ?? "Unnamed member"}</strong>
+              <AccessBadge status={accessStatus} />
+            </div>
+            <span className="block break-all text-sm text-ink/60">{user.email}</span>
+            <span className="mt-1 block font-mono text-[10px] uppercase tracking-wide text-ink/45">
+              Joined {user.joinedLabel}
+              {user.isAdmin ? " · administrator" : ""}
+            </span>
+            {accessMode === "public" && accessStatus === "pending" && (
+              <span className="mt-2 inline-flex rounded-full border border-teal/25 bg-mist px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-teal-dark">
+                Can enter now · public mode
+              </span>
+            )}
+            {user.hasPendingAiRequest && (
+              <span className="mt-2 inline-flex rounded-full border border-citrus/80 bg-citrus/35 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-ink">
+                AI access requested
+              </span>
+            )}
+          </div>
+          <label className="block text-xs font-bold text-ink/70">
+            Access
+            <select
+              value={accessStatus}
+              disabled={user.isAdmin}
+              onChange={(event) => {
+                setAccessStatus(event.target.value as AccessStatus);
+                setNotice("");
+              }}
+              className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
+            >
+              <option value="pending">Pending</option>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </label>
+          <label className="block text-xs font-bold text-ink/70">
+            Features
+            <select
+              value={featureTier}
+              disabled={user.isAdmin}
+              onChange={(event) => {
+                setFeatureTier(event.target.value as FeatureTier);
+                setNotice("");
+              }}
+              className="mt-1.5 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/15"
+            >
+              <option value="inventory">Inventory</option>
+              <option value="ai">Outfit Desk</option>
+            </select>
+          </label>
+          <Button type="submit" size="sm" disabled={saving || !dirty}>
+            {saving && <LoaderCircle className="animate-spin" size={14} aria-hidden="true" />}
+            {saving ? "Saving…" : "Save"}
+          </Button>
         </div>
-        {(featureError || featureNotice) && (
+        {(error || notice) && (
           <p
-            role={featureError ? "alert" : "status"}
-            className={`mt-3 rounded-xl px-3 py-2 text-sm ${featureError ? "bg-red-50 text-red-700" : "border border-teal/15 bg-mist text-teal-dark"}`}
+            role={error ? "alert" : "status"}
+            className={`rounded-xl px-3 py-2 text-sm sm:col-start-2 sm:col-end-5 ${error ? "bg-red-50 text-red-700" : "border border-teal/15 bg-mist text-teal-dark"}`}
           >
-            {featureError || featureNotice}
+            {error || notice}
           </p>
         )}
-      </section>
-    </form>
+        <section
+          className="mt-5 border-t border-line pt-4"
+          aria-label={`Alpha features for ${user.name ?? user.email}`}
+        >
+          <h3 className="text-sm font-bold">Alpha features</h3>
+          <div className="mt-3 space-y-3">
+            {user.featureGrants.map((feature) => {
+              const effectiveAccessStatus: AccessStatus =
+                accessMode === "public" && savedAccessStatus === "pending"
+                  ? "active"
+                  : savedAccessStatus;
+              const eligible = effectiveAccessStatus === "active" && savedFeatureTier === "ai";
+              const savingFeature = featureSaving === feature.key;
+              return (
+                <div
+                  key={feature.key}
+                  className="flex flex-col gap-3 rounded-2xl border border-line bg-canvas/65 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <strong className="block text-sm">{feature.label}</strong>
+                    <span className="mt-0.5 block text-xs text-ink/60">{feature.description}</span>
+                    <span className="mt-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-ink/50">
+                      {user.isAdmin
+                        ? "Always available to administrators"
+                        : feature.available
+                          ? "Available once"
+                          : "Unavailable"}
+                    </span>
+                  </div>
+                  {!user.isAdmin &&
+                    (feature.available ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={savingFeature}
+                        onClick={() => updateFeature(feature.key, "revoke")}
+                      >
+                        {savingFeature ? "Updating…" : "Revoke"}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={savingFeature || !eligible}
+                        title={eligible ? undefined : "Requires an active account with AI access."}
+                        onClick={() => updateFeature(feature.key, "grant")}
+                      >
+                        {savingFeature ? "Granting…" : "Grant one use"}
+                      </Button>
+                    ))}
+                </div>
+              );
+            })}
+          </div>
+          {(featureError || featureNotice) && (
+            <p
+              role={featureError ? "alert" : "status"}
+              className={`mt-3 rounded-xl px-3 py-2 text-sm ${featureError ? "bg-red-50 text-red-700" : "border border-teal/15 bg-mist text-teal-dark"}`}
+            >
+              {featureError || featureNotice}
+            </p>
+          )}
+        </section>
+      </form>
+      <div className="border-t border-line p-5">
+        <h3 className="mb-3 text-lg font-bold">Monthly AI budget</h3>
+        <BudgetEditor
+          key={`${user.budget.overrideLimitMicrousd ?? "inherited"}:${user.budget.limitMicrousd}`}
+          budget={user.budget}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -370,17 +395,36 @@ export function AdminUserManager({
   users,
   aiRequests,
   auditEvents,
+  directory,
+  summary,
+  defaultLimit,
+  budgetAuditEvents,
 }: {
   accessMode: AccessMode;
   users: ManagedUser[];
   aiRequests: AiAccessRequestItem[];
   auditEvents: AuditEvent[];
+  directory: MemberDirectoryState;
+  summary: { total: number; pending: number; active: number; admittedByPublicMode: number };
+  defaultLimit: number;
+  budgetAuditEvents: Array<{
+    id: string;
+    scope: string;
+    actorLabel: string;
+    targetLabel: string;
+    previousLimitMicrousd: number | null;
+    nextLimitMicrousd: number | null;
+    createdLabel: string;
+  }>;
 }) {
-  const pendingCount = users.filter((user) => user.accessStatus === "pending").length;
-  const activeCount = users.filter((user) => user.effectiveAccessStatus === "active").length;
-  const admittedByPublicMode = users.filter(
-    (user) => user.accessStatus === "pending" && user.effectiveAccessStatus === "active",
-  ).length;
+  const router = useRouter();
+  useEffect(() => {
+    const timer = setInterval(() => router.refresh(), 15000);
+    return () => clearInterval(timer);
+  }, [router]);
+  const pendingCount = summary.pending;
+  const activeCount = summary.active;
+  const admittedByPublicMode = summary.admittedByPublicMode;
 
   const summaries =
     accessMode === "public"
@@ -400,17 +444,21 @@ export function AdminUserManager({
             tone: "bg-citrus/35",
             hint: "Entering while public · gated again if switched to private",
           },
-          { label: "Total", value: users.length, tone: "bg-peach/55", hint: undefined },
+          { label: "Total", value: summary.total, tone: "bg-peach/55", hint: undefined },
         ]
       : [
           { label: "Pending", value: pendingCount, tone: "bg-citrus/35", hint: undefined },
           { label: "Active", value: activeCount, tone: "bg-mist", hint: undefined },
-          { label: "Total", value: users.length, tone: "bg-peach/55", hint: undefined },
+          { label: "Total", value: summary.total, tone: "bg-peach/55", hint: undefined },
         ];
 
   return (
     <div className="mt-9 space-y-10">
       <AccessModeControl accessMode={accessMode} />
+      <div className="rounded-2xl border border-line bg-mist/50 p-5">
+        <h2 className="mb-3 text-xl font-bold">Default monthly AI budget</h2>
+        <BudgetEditor key={defaultLimit} defaultLimit={defaultLimit} />
+      </div>
 
       <section
         className="overflow-hidden rounded-3xl border border-line bg-citrus/10 shadow-[5px_5px_0_var(--color-citrus)]"
@@ -456,15 +504,7 @@ export function AdminUserManager({
               : "Approve access and choose which features each person can use."}
           </p>
         </div>
-        <div className="divide-y divide-line">
-          {users.map((user) => (
-            <ManagedUserRow
-              key={`${user.id}:${user.accessStatus}:${user.featureTier}`}
-              user={user}
-              accessMode={accessMode}
-            />
-          ))}
-        </div>
+        <MemberDirectory users={users} accessMode={accessMode} state={directory} />
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-line bg-mist/60">
@@ -503,6 +543,35 @@ export function AdminUserManager({
           <p className="px-5 py-7 text-sm text-ink/60 sm:px-7">
             No permission changes have been made yet.
           </p>
+        )}
+      </section>
+      <section
+        className="overflow-hidden rounded-3xl border border-line bg-mist/60"
+        aria-label="Budget history"
+      >
+        <div className="border-b border-line px-5 py-5 sm:px-7">
+          <h2 className="text-2xl font-bold tracking-[-0.04em]">Budget history</h2>
+        </div>
+        {budgetAuditEvents.length ? (
+          <ul className="divide-y divide-line">
+            {budgetAuditEvents.map((event) => (
+              <li key={event.id} className="break-words px-5 py-4 text-sm sm:px-7">
+                <strong>{event.targetLabel}</strong> ·{" "}
+                {event.previousLimitMicrousd === null
+                  ? "Default inherited"
+                  : usd(event.previousLimitMicrousd)}{" "}
+                →{" "}
+                {event.nextLimitMicrousd === null
+                  ? "Default inherited"
+                  : usd(event.nextLimitMicrousd)}
+                <span className="mt-1 block text-xs text-ink/65">
+                  Changed by {event.actorLabel} · {event.createdLabel} UTC
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="p-5 text-sm text-ink/65">No budget changes have been made yet.</p>
         )}
       </section>
     </div>

@@ -136,7 +136,7 @@ export function ItemEditor({
   const visibleError =
     error ||
     (item.analysisStatus === "failed"
-      ? "We couldn’t read this garment’s details. You can try again."
+      ? (item.analysisError ?? "We couldn’t read this garment’s details. You can try again.")
       : "");
 
   useEffect(() => {
