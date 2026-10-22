@@ -52,7 +52,7 @@
     "shadcn": "^4.21.4",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "packageManager": "bun@1.2.17",
   "ignoreScripts": [
@@ -64,6 +64,7 @@
     "unrs-resolver"
   ],
   "overrides": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "vite": "^8.3.3"
   }
 }

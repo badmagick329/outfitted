@@ -16,6 +16,8 @@ export const unauthorized = () => new ApplicationError("UNAUTHORIZED", 401, "Sig
 export const forbidden = (message = "You do not have permission to do that") =>
   new ApplicationError("FORBIDDEN", 403, message);
 export const conflict = (message: string) => new ApplicationError("CONFLICT", 409, message);
+export const payloadTooLarge = () =>
+  new ApplicationError("PAYLOAD_TOO_LARGE", 413, "The uploaded photos are too large.");
 export const infrastructureFailure = (message = "Something went wrong. Please try again.") =>
   new ApplicationError("INFRASTRUCTURE_FAILURE", 500, message);
 

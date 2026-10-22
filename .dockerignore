@@ -2,6 +2,9 @@
 .next
 node_modules
 data
-.env
+.env*
+**/.env*
+*.pem
+**/*.pem
 .ignore
 *.log

@@ -6,6 +6,7 @@ import {
   wardrobeItemIdSchema,
 } from "@/features/wardrobe/domain/contracts";
 import { wardrobeService } from "@/features/wardrobe/server";
+import { readPhotoFormData } from "@/features/wardrobe/presentation/photo-request";
 import { routeError } from "@/shared/route-response";
 
 export async function GET(request: Request, context: RouteContext<"/api/photos/[id]">) {
@@ -30,16 +31,14 @@ export const runtime = "nodejs";
 export async function PUT(request: Request, context: RouteContext<"/api/photos/[id]">) {
   try {
     const { id } = await context.params;
+    const userId = (await requireActiveUser()).userId;
+    const photoId = wardrobeItemIdSchema.parse(id);
     const files = replacePhotoSchema.parse(
-      (await request.formData())
+      (await readPhotoFormData(request, 1))
         .getAll("photo")
         .filter((value): value is File => value instanceof File),
     );
-    const photos = await wardrobeService.replacePhoto(
-      (await requireActiveUser()).userId,
-      wardrobeItemIdSchema.parse(id),
-      files[0],
-    );
+    const photos = await wardrobeService.replacePhoto(userId, photoId, files[0]);
     return NextResponse.json({ photos });
   } catch (error) {
     return routeError(error);
