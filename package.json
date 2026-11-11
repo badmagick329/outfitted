@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "audit:check": "bun run scripts/audit-check.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"*.{js,mjs,cjs,ts,json,css}\" \".github/**/*.{yml,yaml}\"",

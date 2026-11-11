@@ -1,0 +1,16 @@
+{
+  "exceptions": [
+    {
+      "advisory": "GHSA-g3hv-75wg-m249",
+      "package": "minimatch",
+      "reason": "Development only. Fixed only in minimatch 11.0.1, but typescript-eslint (through eslint-config-next) pins ^10 and shadcn's ts-morph pins ^10.2.2. Lint and the shadcn CLI only see trusted repository patterns.",
+      "expires": "2027-02-11"
+    },
+    {
+      "advisory": "GHSA-gcqx-w48m-w2h4",
+      "package": "deepmerge",
+      "reason": "Development only. No patched release exists. Reached only through shadcn > @shadcn/registry, a CLI that never runs in the app.",
+      "expires": "2027-02-11"
+    }
+  ]
+}
